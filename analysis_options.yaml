@@ -1,0 +1,30 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - "packages/**"
+    - "**/*.g.dart"
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
+  language:
+    strict-casts: true
+  errors:
+    todo: ignore
+
+linter:
+  rules:
+    - always_declare_return_types
+    - avoid_print
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_locals
+    # `require_trailing_commas` is deliberately omitted: it contradicts
+    # `dart format`, which collapses short argument lists onto one line and
+    # then trips the lint. Formatting is enforced by `dart format` in CI.
+    - sort_child_properties_last
+    - use_super_parameters

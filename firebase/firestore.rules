@@ -1,0 +1,314 @@
+rules_version = '2';
+
+// Prayan Trading Journal — Firestore security rules.
+//
+// Three guarantees this file enforces (brief §4, §21, §32):
+//
+//  1. ISOLATION. Every document lives under /users/{uid}. A request is only
+//     ever allowed when request.auth.uid == uid. There is no shared collection
+//     and no cross-user read path.
+//
+//  2. SERVER-AUTHORITATIVE SCORES. Clients may never write dailySummaries,
+//     tradeRuleEvaluations, the weekly/monthly rollups or auditEvents. Those
+//     are written exclusively by the Cloud Functions service account, which
+//     bypasses these rules via the Admin SDK. The client computes the same
+//     numbers locally for instant feedback, but what is *stored* is the
+//     server's, so a tampered client cannot fabricate a discipline score.
+//
+//  3. IMMUTABLE RULE HISTORY. ruleVersions documents can be created but never
+//     updated or deleted. Without this, editing a rule could rewrite how past
+//     trades were judged and the audit trail would be worthless.
+//
+// Money is stored as a decimal STRING ("1234.56"), never a number. Firestore
+// numbers are IEEE-754 doubles and would silently corrupt the value.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Helpers ------------------------------------------------------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // A decimal held as a string, optionally signed. Rejects "1e9", "NaN",
+    // empty strings and anything with a stray character.
+    function isDecimalString(value) {
+      return value is string
+        && value.size() > 0
+        && value.size() <= 40
+        && value.matches('^-?[0-9]+(\\.[0-9]+)?$');
+    }
+
+    function isOptionalDecimalString(value) {
+      return value == null || isDecimalString(value);
+    }
+
+    function isIsoTimestamp(value) {
+      return value is string && value.size() >= 20 && value.size() <= 30;
+    }
+
+    function isDayKey(value) {
+      return value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    // Text the user typed. Bounded so a single document cannot be used as
+    // unbounded storage.
+    function isBoundedText(value, maxLength) {
+      return value == null || (value is string && value.size() <= maxLength);
+    }
+
+    function ownsPayload(uid) {
+      return incoming().userId == uid;
+    }
+
+    // Fields the client is never allowed to set or change: they are written
+    // by Cloud Functions and are what the audit trail is built from.
+    function noServerFields() {
+      return !incoming().keys().hasAny([
+        'serverScore',
+        'serverEvaluations',
+        'scoredAtUtc',
+        'scoreVersion'
+      ]);
+    }
+
+    // ---- User root ----------------------------------------------------
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid);
+      // Deletion is performed by the account-deletion Cloud Function, which
+      // must remove every subcollection. A client delete would orphan them.
+      allow delete: if false;
+
+      // ---- Profile and preferences -----------------------------------
+
+      match /profiles/{profileId} {
+        allow read: if isOwner(uid);
+        allow write: if isOwner(uid)
+          && profileId == uid
+          && incoming().id == uid
+          && isBoundedText(incoming().displayName, 120)
+          && incoming().timezoneName is string
+          && incoming().defaultCurrencyCode is string
+          && incoming().defaultCurrencyCode.size() == 3;
+      }
+
+      match /appPreferences/{docId} {
+        allow read, write: if isOwner(uid) && docId == uid;
+      }
+
+      match /notificationPreferences/{docId} {
+        allow read, write: if isOwner(uid) && docId == uid;
+      }
+
+      // ---- Reference data ---------------------------------------------
+
+      match /accounts/{accountId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && ownsPayload(uid)
+          && incoming().name is string
+          && incoming().name.size() > 0
+          && incoming().name.size() <= 80
+          && incoming().currencyCode is string
+          && incoming().currencyCode.size() == 3
+          && isDecimalString(incoming().startingEquity)
+          && isOptionalDecimalString(incoming().currentEquity);
+        // Accounts are archived, never deleted: historical trades reference
+        // them for currency and equity context.
+        allow delete: if false;
+      }
+
+      match /strategies/{strategyId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && ownsPayload(uid)
+          && incoming().name is string
+          && incoming().name.size() > 0
+          && incoming().name.size() <= 80
+          && isBoundedText(incoming().description, 500)
+          && incoming().isApproved is bool;
+        allow delete: if false;
+      }
+
+      match /checklistItems/{itemId} {
+        allow read: if isOwner(uid);
+        allow write: if isOwner(uid)
+          && ownsPayload(uid)
+          && incoming().prompt is string
+          && incoming().prompt.size() > 0
+          && incoming().prompt.size() <= 300;
+      }
+
+      // ---- Rules -------------------------------------------------------
+
+      match /rules/{ruleId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && ownsPayload(uid)
+          && incoming().current is map
+          && incoming().current.name is string
+          && incoming().current.name.size() > 0
+          && incoming().current.name.size() <= 120
+          && incoming().current.severity in ['info', 'warning', 'major']
+          && isOptionalDecimalString(incoming().current.threshold)
+          && isIsoTimestamp(incoming().current.effectiveFromUtc);
+        allow delete: if isOwner(uid);
+
+        // Immutable. Editing a rule appends a new version; it never rewrites
+        // an old one, which is what keeps historical verdicts trustworthy.
+        match /ruleVersions/{versionId} {
+          allow read: if isOwner(uid);
+          allow create: if isOwner(uid)
+            && incoming().ruleId == ruleId
+            && isIsoTimestamp(incoming().effectiveFromUtc);
+          allow update, delete: if false;
+        }
+      }
+
+      // ---- Trades ------------------------------------------------------
+
+      match /trades/{tradeId} {
+        allow read: if isOwner(uid);
+
+        allow create, update: if isOwner(uid)
+          && ownsPayload(uid)
+          && noServerFields()
+          && incoming().id == tradeId
+          && incoming().symbol is string
+          && incoming().symbol.size() > 0
+          && incoming().symbol.size() <= 40
+          && incoming().direction in ['long', 'short']
+          && incoming().status in ['planned', 'open', 'closed', 'cancelled']
+          && isDayKey(incoming().tradingDayKey)
+          && isIsoTimestamp(incoming().openedAtUtc)
+          // Prices and sizes are decimal strings, never numbers.
+          && isOptionalDecimalString(incoming().plannedEntryPrice)
+          && isOptionalDecimalString(incoming().stopLossPrice)
+          && isOptionalDecimalString(incoming().targetPrice)
+          && isOptionalDecimalString(incoming().plannedQuantity)
+          && isOptionalDecimalString(incoming().accountEquityAtOpen)
+          && isDecimalString(incoming().multiplier)
+          && incoming().executions is list
+          && incoming().executions.size() <= 100
+          && isBoundedText(incoming().entryReason, 4000)
+          && isBoundedText(incoming().exitReason, 4000)
+          && isBoundedText(incoming().managementNotes, 4000)
+          && incoming().tags is list
+          && incoming().tags.size() <= 20
+          && incoming().attachmentIds is list
+          && incoming().attachmentIds.size() <= 10;
+
+        allow delete: if isOwner(uid);
+      }
+
+      // ---- Server-written aggregates ------------------------------------
+      //
+      // Readable by the owner, writable by nobody but the Admin SDK. This is
+      // the "never trust client-calculated scores" requirement enforced at
+      // the datastore rather than in application code.
+
+      match /tradeRuleEvaluations/{evaluationId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      match /dailySummaries/{dayKey} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      match /weeklySummaries/{weekKey} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      match /monthlySummaries/{monthKey} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      match /disciplineScores/{scoreId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      match /streaks/{streakId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      // Append-only audit log.
+      match /auditEvents/{eventId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      // ---- Reflection --------------------------------------------------
+
+      match /reviews/{reviewId} {
+        allow read: if isOwner(uid);
+        allow write: if isOwner(uid)
+          && ownsPayload(uid)
+          && isDayKey(incoming().dayKey)
+          && isBoundedText(incoming().whatWentWell, 4000)
+          && isBoundedText(incoming().ruleBroken, 4000)
+          && isBoundedText(incoming().riskAssessment, 4000)
+          && isBoundedText(incoming().worstProcessDecision, 4000)
+          && isBoundedText(incoming().oneImprovement, 4000);
+      }
+
+      match /psychologyEntries/{entryId} {
+        allow read: if isOwner(uid);
+        allow write: if isOwner(uid)
+          && ownsPayload(uid)
+          && isDayKey(incoming().dayKey)
+          && incoming().intensity is int
+          && incoming().intensity >= 1
+          && incoming().intensity <= 5
+          && isBoundedText(incoming().note, 2000);
+      }
+
+      match /behaviourWatches/{watchId} {
+        allow read: if isOwner(uid);
+        allow write: if isOwner(uid)
+          && ownsPayload(uid)
+          && incoming().description is string
+          && incoming().description.size() > 0
+          && incoming().description.size() <= 500;
+      }
+
+      // ---- Attachments (metadata; bytes live in Cloud Storage) ---------
+
+      match /attachments/{attachmentId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && ownsPayload(uid)
+          && incoming().contentType in [
+            'image/jpeg', 'image/png', 'image/webp', 'image/heic'
+          ]
+          && incoming().sizeBytes is int
+          && incoming().sizeBytes > 0
+          && incoming().sizeBytes <= 10 * 1024 * 1024;
+        allow update: if false;
+        allow delete: if isOwner(uid);
+      }
+    }
+
+    // Anything not matched above is denied. Stated explicitly so a future
+    // collection cannot become world-readable by being forgotten.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "indexes": [
+    {
+      "//": "Trade history and analytics: every range query is by trading day within one account.",
+      "collectionGroup": "trades",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "accountId", "order": "ASCENDING" },
+        { "fieldPath": "tradingDayKey", "order": "ASCENDING" },
+        { "fieldPath": "openedAtUtc", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Dashboard: today's trades in the order they were taken. Sequence matters for the daily-stop rule.",
+      "collectionGroup": "trades",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tradingDayKey", "order": "ASCENDING" },
+        { "fieldPath": "openedAtUtc", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Journal filters: open positions across the whole history.",
+      "collectionGroup": "trades",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "openedAtUtc", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Analytics breakdown by setup.",
+      "collectionGroup": "trades",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "strategyId", "order": "ASCENDING" },
+        { "fieldPath": "tradingDayKey", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Analytics breakdown by instrument type.",
+      "collectionGroup": "trades",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "assetClass", "order": "ASCENDING" },
+        { "fieldPath": "tradingDayKey", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Tag search in the journal.",
+      "collectionGroup": "trades",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tags", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "tradingDayKey", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Streaks and rolling scores read a contiguous window of days.",
+      "collectionGroup": "dailySummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dayKey", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Calendar: days with a major violation get a distinct marker.",
+      "collectionGroup": "dailySummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "hadMajorViolation", "order": "ASCENDING" },
+        { "fieldPath": "dayKey", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Rule-specific compliance history.",
+      "collectionGroup": "tradeRuleEvaluations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ruleId", "order": "ASCENDING" },
+        { "fieldPath": "dayKey", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Resolving which rule version governed a historical trade.",
+      "collectionGroup": "ruleVersions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ruleId", "order": "ASCENDING" },
+        { "fieldPath": "effectiveFromUtc", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Psychology correlations over a date range.",
+      "collectionGroup": "psychologyEntries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dayKey", "order": "ASCENDING" },
+        { "fieldPath": "emotion", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "//": "Long free-text is never queried; excluding it from indexing saves write cost and keeps documents under the index-entry limit.",
+      "collectionGroup": "trades",
+      "fieldPath": "entryReason",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "trades",
+      "fieldPath": "exitReason",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "trades",
+      "fieldPath": "managementNotes",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "trades",
+      "fieldPath": "executions",
+      "indexes": []
+    }
+  ]
+}

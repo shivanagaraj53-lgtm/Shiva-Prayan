@@ -1,0 +1,20 @@
+name: prayan_core
+description: >-
+  Pure-Dart domain engine for Prayan Trading Journal: exact fixed-point money
+  arithmetic, trade calculations, the discipline rules engine and the
+  explainable discipline score. Contains no Flutter, Firebase or IO imports so
+  it can be unit tested on the Dart VM and reused by a future web client.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+# Intentionally dependency-free. Every calculation this package performs is
+# authoritative, so it must not inherit behaviour from a third-party numeric
+# library that could change under us.
+dependencies:
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

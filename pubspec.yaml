@@ -1,0 +1,93 @@
+name: prayan_trading_journal
+description: >-
+  Prayan Trading Journal — plan the trade, follow the rules, measure the
+  discipline, improve the process.
+publish_to: none
+
+# version+build. The build number is overwritten by CI from the pipeline
+# counter; the semantic version is bumped deliberately.
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # The authoritative domain engine. Pure Dart, no Flutter — see
+  # packages/prayan_core. Every calculation and rule verdict comes from here.
+  prayan_core:
+    path: packages/prayan_core
+
+  # State management. Riverpod is chosen over Provider/BLoC because its
+  # providers are compile-time safe, trivially overridable in tests, and do
+  # not require a BuildContext to read — which matters because most of this
+  # app's state is derived from pure functions in prayan_core rather than
+  # from widget lifecycle. See docs/BLUEPRINT.md §G.
+  flutter_riverpod: ^2.6.1
+
+  # Declarative routing with deep-link support, needed for notification taps
+  # that open a specific day or trade.
+  go_router: ^14.6.2
+
+  # Charts. fl_chart is pure Dart with no platform channels, so analytics
+  # render identically on both platforms and in widget tests.
+  fl_chart: ^0.69.2
+
+  # Date/number formatting per locale.
+  intl: ^0.20.3
+
+  # IANA timezone database. The domain engine takes a plain UTC offset; this
+  # is what resolves the user's zone to the offset in effect at an instant,
+  # including daylight-saving transitions.
+  timezone: ^0.11.1
+
+  # Local persistence for preferences and the offline draft queue.
+  shared_preferences: ^2.3.3
+
+  equatable: ^2.0.7
+  collection: ^1.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+# NOTE ON FIREBASE
+# ----------------
+# The Firebase packages (firebase_core, firebase_auth, cloud_firestore,
+# firebase_storage, firebase_messaging, firebase_crashlytics) are intentionally
+# NOT listed above yet. Adding them requires a real Firebase project so that
+# `flutterfire configure` can generate lib/firebase_options.dart plus the
+# platform files (android/app/google-services.json, ios/Runner/
+# GoogleService-Info.plist). Declaring the dependencies without those files
+# produces a build that compiles and then fails at launch, which is worse than
+# one that clearly has not been wired up yet.
+#
+# The app is written against repository interfaces (lib/data/repositories/),
+# so enabling Firebase is an additive step that touches no feature code:
+#
+#   1. Create the Firebase project and register the Android/iOS apps.
+#   2. dart pub global activate flutterfire_cli
+#      flutterfire configure --project=<your-project-id>
+#   3. Add to dependencies:
+#        firebase_core: ^3.8.0
+#        firebase_auth: ^5.3.3
+#        cloud_firestore: ^5.5.0
+#        firebase_storage: ^12.3.6
+#        firebase_messaging: ^15.1.5
+#        firebase_crashlytics: ^4.1.5
+#      Verify the latest stable versions against pub.dev before pinning.
+#   4. Swap the repository overrides in lib/app/bootstrap.dart from the local
+#      implementations to the Firestore ones in lib/data/firestore/.
+#
+# Full instructions: docs/FIREBASE_SETUP.md
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/brand/
