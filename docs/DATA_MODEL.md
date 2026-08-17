@@ -154,6 +154,14 @@ Storage under `users/{uid}/attachments/`.
 ### `auditEvents/{eventId}` — **server-written, append-only**
 Trade edits, rule version publications, deletions.
 
+### `coachingUsage/{yyyy-MM-dd}` — **server-written**
+`{ userId, periodKey, count, updatedAtUtc }`. How many model-backed
+reflections the user has requested today, so the app can show what remains.
+Readable by the owner and writable only by the coaching service — a
+client-writable counter is not a limit. Exceeding the cap is not an error: the
+service falls back to the deterministic narrative, which is built from the same
+computed facts.
+
 ---
 
 ## Retention and deletion

@@ -248,6 +248,14 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // Per-day count of model-backed coaching narratives. Readable so the app
+      // can show how many reflections remain; writable only by the coaching
+      // service, because a client-writable counter is not a limit.
+      match /coachingUsage/{periodKey} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
       // Append-only audit log.
       match /auditEvents/{eventId} {
         allow read: if isOwner(uid);
