@@ -277,18 +277,7 @@ class _DashboardBody extends ConsumerWidget {
             ),
           ),
           if (snapshot.trades.isEmpty)
-            PrayanCard(
-              padding: EdgeInsets.zero,
-              child: EmptyState(
-                compact: true,
-                icon: Icons.event_available_outlined,
-                title: 'Nothing logged today',
-                message: 'A day with no valid setup is a good day. If you did '
-                    'trade, log it while the reasoning is fresh.',
-                actionLabel: 'Log a trade',
-                onAction: () => context.push(Routes.logTrade),
-              ),
-            )
+            _NothingToday(dayKey: snapshot.dayKey)
           else
             PrayanCard(
               padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
@@ -312,6 +301,58 @@ class _DashboardBody extends ConsumerWidget {
           const SizedBox(height: Spacing.lg),
           const DisclaimerNote(),
         ],
+      ),
+    );
+  }
+}
+
+/// The dashboard when today is empty.
+///
+/// "Nothing logged today" on its own is a dead end, and it is the first screen
+/// a new user reaches: onboarding dates the worked example to the last
+/// *finished* session, so anyone who sets the app up before the bell — or over
+/// a weekend — asks for an example and is shown a blank page. The same dead end
+/// catches a real user on any quiet morning.
+///
+/// So when there is nothing today but something recent, the card says when the
+/// last session was and opens it. The score is deliberately not shown here:
+/// this screen is today's score, and a second number beside it would read as
+/// today's.
+class _NothingToday extends ConsumerWidget {
+  final String dayKey;
+  const _NothingToday({required this.dayKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lastActive = ref.watch(lastActiveDayBeforeProvider(dayKey));
+
+    if (lastActive == null) {
+      return PrayanCard(
+        padding: EdgeInsets.zero,
+        child: EmptyState(
+          compact: true,
+          icon: Icons.event_available_outlined,
+          title: 'Nothing logged today',
+          message: 'A day with no valid setup is a good day. If you did '
+              'trade, log it while the reasoning is fresh.',
+          actionLabel: 'Log a trade',
+          onAction: () => context.push(Routes.logTrade),
+        ),
+      );
+    }
+
+    final date = TradingDay.parseKey(lastActive);
+    return PrayanCard(
+      padding: EdgeInsets.zero,
+      child: EmptyState(
+        compact: true,
+        icon: Icons.history_toggle_off_outlined,
+        title: 'Nothing logged today',
+        message: 'A day with no valid setup is a good day. Your last session '
+            'was ${Fmt.dayKey(lastActive, long: true)}.',
+        actionLabel:
+            'Open ${date == null ? lastActive : Fmt.dayShort(date)}',
+        onAction: () => context.push(Routes.dailyReview(lastActive)),
       ),
     );
   }

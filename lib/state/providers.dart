@@ -335,6 +335,28 @@ final activeDaySnapshotProvider = Provider<AsyncValue<DaySnapshot>>(
   (ref) => ref.watch(daySnapshotProvider(ref.watch(activeDayKeyProvider))),
 );
 
+/// The most recent day *before* [dayKey] that has any trades on it.
+///
+/// A day with nothing logged is a dead end otherwise: the dashboard is a
+/// today-only screen, so someone opening the app before the session — or on a
+/// Monday morning, or right after onboarding loads the worked example onto the
+/// last finished session — is shown an empty page with no indication that the
+/// journal behind it has anything in it at all.
+///
+/// Looks back three weeks, which covers a holiday plus a long weekend and is
+/// short enough that a journal abandoned a month ago does not resurface as if
+/// it were current. Returns null when there is genuinely nothing to point at.
+final lastActiveDayBeforeProvider =
+    Provider.family<String?, String>((ref, dayKey) {
+  final yesterday = _shiftDays(dayKey, -1);
+  final trades =
+      ref.watch(tradesInRangeProvider(DayRange(_shiftDays(dayKey, -21), yesterday)));
+  final keys = trades.value?.map((t) => t.tradingDayKey);
+  if (keys == null || keys.isEmpty) return null;
+  // Day keys are ISO dates, so the lexical maximum is the chronological one.
+  return keys.reduce((a, b) => a.compareTo(b) >= 0 ? a : b);
+});
+
 String _shiftDays(String dayKey, int days) {
   final date = TradingDay.parseKey(dayKey);
   if (date == null) return dayKey;
