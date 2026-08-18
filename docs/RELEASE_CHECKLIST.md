@@ -18,8 +18,8 @@ machine, or a decision that is yours.
 | Blocker | Why it blocks | What closes it |
 |---|---|---|
 | **No Apple Developer / Play Console account wired up** | Nothing can be uploaded without one | Enrol (Apple $99/yr, Play $25 one-off), create the app records |
-| **No signed iOS build** | An IPA can only be built on macOS with Xcode. CI now compiles the iOS app unsigned on every push, which proves it builds; signing it needs the Apple account | Enrol, then add the certificate secrets listed in `.github/workflows/build.yml` |
-| **No Android upload key** | Release builds are unsigned until `android/key.properties` exists — deliberately, so a debug-signed bundle can never reach Play | `keytool -genkey` per `android/key.properties.example` |
+| **No signed iOS build** | The iOS app now **compiles on CI** (verified, unsigned, on macOS). Producing an uploadable IPA needs a distribution certificate | Enrol, then add the certificate secrets listed in `.github/workflows/build.yml` |
+| **No Android upload key** | The release bundle now **builds on CI** (verified, 51 MB AAB). It is unsigned until `android/key.properties` exists — deliberately, so a debug-signed bundle can never reach Play | `keytool -genkey` per `android/key.properties.example` |
 | **The app has never run on a physical device** | Every test so far is a unit, widget or browser test. Touch targets, keyboard behaviour, scroll physics and text input are unverified on real hardware | An hour with one iPhone and one Android phone |
 | **Privacy policy and terms not yet hosted** | Both stores require a reachable URL. The documents are written — `store/legal/` — but a URL is needed | Publish `store/legal/*.md`, fill in the bracketed entity name and jurisdiction |
 | ~~No store screenshots~~ | Done — `store/screenshots/`, three device classes | — |
@@ -120,11 +120,18 @@ flutter build ipa --release                       # needs macOS + Xcode
 - [x] Analyzer clean
 - [x] 217 tests passing across the app and domain package
 - [x] Release shrinking enabled (`isMinifyEnabled`, `isShrinkResources`)
-- [x] CI builds the Android bundle and compiles the iOS app on every push —
-      `.github/workflows/build.yml`. Neither can run on a Linux workstation,
-      so before this nothing had ever been built for a phone.
+- [x] **Android release bundle builds** — verified on CI, 51 MB AAB artifact
+- [x] **iOS app compiles and links** — verified on CI, unsigned, on macOS
+- [x] Release shrinking (R8) survives a real Android build
+- [x] Gradle dependencies cached, with retry limited to transient download
+      failures, so a Maven Central rate limit does not read as a code failure
 - [ ] `flutter build appbundle` signed with a real upload key
 - [ ] `flutter build ipa` with a distribution certificate
+
+> What a green CI build does **not** prove: that the app installs, launches or
+> behaves correctly on a phone. Compilation and runtime are different claims,
+> and only the second one matters to a user. The device pass below is still the
+> largest untested gap.
 - [ ] Tested on a physical iPhone and a physical Android device
 - [ ] Tested at largest dynamic-type setting and with a screen reader on device
 
