@@ -259,6 +259,105 @@ Uint8List encodePng(Uint8List rgba, int size, {bool opaque = false}) {
   ]);
 }
 
+
+/// The Play feature graphic: 1024x500, no text.
+///
+/// Play overlays the app name and icon on this in several places and crops it
+/// differently on each, so it carries no words of its own and keeps the mark
+/// well inside the safe area.
+Uint8List renderFeatureGraphic(int width, int height) {
+  final pixels = Uint8List(width * height * 4);
+  final plate = Rgba.fromArgb(plateArgb);
+  final mark = Rgba.fromArgb(accentArgb);
+
+  // The mark's drawn content occupies only the middle ~45% of its own box, so
+  // the box is set larger than the banner to make the steps read at a glance.
+  // It is placed left of centre: Play draws the app name and icon over this
+  // graphic in several placements, and the right side has to stay clear.
+  final side = height * 1.07;
+  final originY = (height - side) / 2;
+  // Put the visible centre of the mark at 30% of the width.
+  final originX = width * 0.30 - side / 2;
+
+  final segments = stepSegments(side);
+  final halfStroke = kStrokeWidth * side / 2;
+  final dotRadius = kStrokeWidth * side * kDotScale;
+  final dotX = kLeft * side;
+  final dotY = kBottom * side;
+
+  const step = 1.0 / kSupersample;
+  const samplesPerPixel = kSupersample * kSupersample;
+
+  // A hairline of the accent along the bottom, the same device the app uses to
+  // separate a section from its ground.
+  final ruleTop = height - height * 0.035;
+
+  for (var py = 0; py < height; py++) {
+    for (var px = 0; px < width; px++) {
+      var markHits = 0;
+      for (var sy = 0; sy < kSupersample; sy++) {
+        for (var sx = 0; sx < kSupersample; sx++) {
+          final x = px + (sx + 0.5) * step - originX;
+          final y = py + (sy + 0.5) * step - originY;
+          final ddx = x - dotX;
+          final ddy = y - dotY;
+          var on = ddx * ddx + ddy * ddy <= dotRadius * dotRadius;
+          if (!on) {
+            for (final s in segments) {
+              if (_distanceToSegment(x, y, s[0], s[1], s[2], s[3]) <=
+                  halfStroke) {
+                on = true;
+                break;
+              }
+            }
+          }
+          if (on) markHits++;
+        }
+      }
+
+      final coverage = markHits / samplesPerPixel;
+      final onRule = py >= ruleTop;
+      final alpha = onRule ? 1.0 : coverage;
+
+      final i = (py * width + px) * 4;
+      int blend(int top, int bottom) =>
+          (top * alpha + bottom * (1 - alpha)).round().clamp(0, 255);
+      pixels[i] = blend(mark.r, plate.r);
+      pixels[i + 1] = blend(mark.g, plate.g);
+      pixels[i + 2] = blend(mark.b, plate.b);
+      pixels[i + 3] = 255;
+    }
+  }
+  return pixels;
+}
+
+/// Like [encodePng] but for a non-square image.
+Uint8List encodePng2(Uint8List rgba, int width, int height,
+    {bool opaque = false}) {
+  final raw = <int>[];
+  for (var y = 0; y < height; y++) {
+    raw.add(0);
+    for (var x = 0; x < width; x++) {
+      final i = (y * width + x) * 4;
+      raw..add(rgba[i])..add(rgba[i + 1])..add(rgba[i + 2]);
+      if (!opaque) raw.add(rgba[i + 3]);
+    }
+  }
+  final ihdr = <int>[
+    ..._be32(width),
+    ..._be32(height),
+    8,
+    opaque ? 2 : 6,
+    0, 0, 0,
+  ];
+  return Uint8List.fromList([
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+    ..._chunk('IHDR', ihdr),
+    ..._chunk('IDAT', ZLibCodec(level: 9).encode(raw)),
+    ..._chunk('IEND', const <int>[]),
+  ]);
+}
+
 void write(String path, Uint8List bytes) {
   final file = File(path);
   file.parent.createSync(recursive: true);
@@ -333,6 +432,8 @@ void main() {
     'store/play/icon-512.png',
     encodePng(renderIcon(512, plate: plateArgb, square: true), 512),
   );
+  write('store/play/feature-graphic-1024x500.png', encodePng2(
+    renderFeatureGraphic(1024, 500), 1024, 500, opaque: true));
 
   stdout.writeln('Web:');
   for (final entry in <String, int>{

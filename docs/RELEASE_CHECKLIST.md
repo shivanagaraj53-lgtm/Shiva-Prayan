@@ -18,11 +18,11 @@ machine, or a decision that is yours.
 | Blocker | Why it blocks | What closes it |
 |---|---|---|
 | **No Apple Developer / Play Console account wired up** | Nothing can be uploaded without one | Enrol (Apple $99/yr, Play $25 one-off), create the app records |
-| **No iOS build has ever been produced** | An IPA can only be built on macOS with Xcode. This repository has been built and tested on Linux only | A Mac (or a macOS CI runner) running `flutter build ipa` |
+| **No signed iOS build** | An IPA can only be built on macOS with Xcode. CI now compiles the iOS app unsigned on every push, which proves it builds; signing it needs the Apple account | Enrol, then add the certificate secrets listed in `.github/workflows/build.yml` |
 | **No Android upload key** | Release builds are unsigned until `android/key.properties` exists — deliberately, so a debug-signed bundle can never reach Play | `keytool -genkey` per `android/key.properties.example` |
 | **The app has never run on a physical device** | Every test so far is a unit, widget or browser test. Touch targets, keyboard behaviour, scroll physics and text input are unverified on real hardware | An hour with one iPhone and one Android phone |
-| **No privacy policy or terms at a public URL** | Both stores require a reachable URL before the listing can be submitted | Publish both; the data-handling facts are in `docs/BLUEPRINT.md` §32 |
-| **No store screenshots** | Required per device class | Capture on device or simulator once it runs there |
+| **Privacy policy and terms not yet hosted** | Both stores require a reachable URL. The documents are written — `store/legal/` — but a URL is needed | Publish `store/legal/*.md`, fill in the bracketed entity name and jurisdiction |
+| ~~No store screenshots~~ | Done — `store/screenshots/`, three device classes | — |
 | **Firebase is not connected** | The app works fully on device-local storage, but there is no sync, no account recovery and no server-authoritative scoring | `docs/FIREBASE_SETUP.md`, then the backend in `Shiva-PrayanAI` |
 
 **Realistic timeline.** Apple review is typically 24–48 hours *after* a build
@@ -53,8 +53,10 @@ several days. Same-day publication is not achievable from this starting point.
 - [x] iOS 1024 marketing icon has **no alpha channel** (asserted in
       `test/brand_mark_test.dart`)
 - [x] Play listing icon, 512×512 — `store/play/icon-512.png`
-- [ ] Screenshots: 6.7" and 6.1" iPhone, 13" iPad, Android phone and tablet
-- [ ] Feature graphic (Play, 1024×500)
+- [x] Screenshots: iPhone 6.9" (1320×2868), 6.5" (1290×2796), Play phone
+      (1080×1920) — 10 each, in `store/screenshots/`
+- [x] Feature graphic (Play, 1024×500) — `store/play/feature-graphic-1024x500.png`
+- [ ] iPad screenshots, if you ship an iPad build (submit iPhone-only to skip)
 
 Lead the screenshots with the **discipline score and the audit trail**, not a
 P&L curve. That is what the product is, and it is what reads as credible under
@@ -71,9 +73,8 @@ Apple rejects apps with UI that does not work. The two that mattered here:
       `test/auth_providers_test.dart`.
 - [x] Account deletion is reachable in-app and removes data rather than
       disabling the login — required by both stores.
-- [ ] A reviewer needs a working account. Provide demo credentials in App
-      Review notes, and mention the sample-journal switch at the end of
-      onboarding so they see populated screens.
+- [x] App Review notes written, with demo credentials and a walkthrough that
+      puts the reviewer in front of the scoring in four taps — `store/LISTING.md`
 
 > If Google or Apple sign-in is enabled later, Apple requires Sign in with Apple
 > alongside any other third-party login (guideline 4.8).
@@ -85,10 +86,12 @@ Apple rejects apps with UI that does not work. The two that mattered here:
       sizes
 - [x] AI coaching is opt-in; it sends computed summary figures only
 - [x] `ITSAppUsesNonExemptEncryption` declared `false` (HTTPS only, exempt)
-- [ ] Privacy policy and terms published at stable URLs
-- [ ] Play **Data safety** form completed
-- [ ] Apple **privacy nutrition label** completed
-- [ ] Age rating questionnaires completed on both stores
+- [x] Privacy policy and terms written — `store/legal/`
+- [x] Play **Data safety** answers prepared — `store/LISTING.md`
+- [x] Apple **privacy nutrition label** answers prepared — `store/LISTING.md`
+- [x] Age rating answers prepared (expect 4+ / Everyone)
+- [ ] Policy documents published at stable URLs
+- [ ] Console forms actually submitted
 
 ## Financial-app positioning
 
@@ -99,15 +102,14 @@ advice. The app is built not to be, and the listing has to match:
 - [x] The app cannot place orders or connect to a broker
 - [x] Coaching output is guarded against predictions and trade instructions
       (`Shiva-PrayanAI/src/coaching/guard.ts`)
-- [ ] Store description says "journal", "reflection", "discipline" — never
-      "profit", "signals", "returns" or "strategy that works"
-- [ ] Disclaimer in the description: not financial advice, no returns predicted
+- [x] Store description written to that standard — `store/LISTING.md`
+- [x] Disclaimer in the description: not financial advice, no returns predicted
 
 ## Build and verify
 
 ```bash
 flutter analyze                                   # 0 issues
-flutter test                                      # 52 widget/accessibility tests
+flutter test                                      # 60 widget/accessibility tests
 cd packages/prayan_core && dart test              # 157 domain tests
 dart run tool/generate_launcher_icons.dart        # regenerate icons
 
@@ -116,10 +118,13 @@ flutter build ipa --release                       # needs macOS + Xcode
 ```
 
 - [x] Analyzer clean
-- [x] 209 tests passing across the app and domain package
+- [x] 217 tests passing across the app and domain package
 - [x] Release shrinking enabled (`isMinifyEnabled`, `isShrinkResources`)
-- [ ] `flutter build appbundle` run against a real keystore
-- [ ] `flutter build ipa` run on macOS
+- [x] CI builds the Android bundle and compiles the iOS app on every push —
+      `.github/workflows/build.yml`. Neither can run on a Linux workstation,
+      so before this nothing had ever been built for a phone.
+- [ ] `flutter build appbundle` signed with a real upload key
+- [ ] `flutter build ipa` with a distribution certificate
 - [ ] Tested on a physical iPhone and a physical Android device
 - [ ] Tested at largest dynamic-type setting and with a screen reader on device
 
