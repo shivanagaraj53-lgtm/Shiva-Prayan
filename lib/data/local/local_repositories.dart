@@ -140,6 +140,11 @@ class LocalAuthRepository implements AuthRepository {
     return user;
   }
 
+  /// Device-local storage can verify an email and password and nothing else.
+  /// Federated sign-in needs Firebase Auth, so it is not offered here.
+  @override
+  Set<AuthProvider> get supportedProviders => const {AuthProvider.emailPassword};
+
   @override
   Future<AuthUser> signInWithGoogle() => _federatedUnavailable('Google');
 

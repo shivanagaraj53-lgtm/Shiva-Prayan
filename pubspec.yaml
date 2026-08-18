@@ -6,7 +6,7 @@ publish_to: none
 
 # version+build. The build number is overwritten by CI from the pipeline
 # counter; the semantic version is bumped deliberately.
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"

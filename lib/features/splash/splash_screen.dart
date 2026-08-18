@@ -65,7 +65,17 @@ class PrayanMark extends StatelessWidget {
   /// Overrides the mark colour; defaults to the theme accent.
   final Color? color;
 
-  const PrayanMark({super.key, this.size = 64, this.color});
+  /// Overrides the rounded plate behind the mark; defaults to the theme's
+  /// muted accent. The launcher-icon generator passes a transparent plate to
+  /// render the adaptive-icon foreground layer on its own.
+  final Color? plateColor;
+
+  const PrayanMark({
+    super.key,
+    this.size = 64,
+    this.color,
+    this.plateColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +89,7 @@ class PrayanMark extends StatelessWidget {
         child: CustomPaint(
           painter: _MarkPainter(
             mark: color ?? colors.accent,
-            plate: colors.accentMuted,
+            plate: plateColor ?? colors.accentMuted,
           ),
         ),
       ),

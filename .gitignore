@@ -54,3 +54,8 @@ ios/Runner/GoogleService-Info.plist
 
 # Machine-specific
 android/local.properties
+
+# Release signing. Never commit the upload key or its passwords.
+android/key.properties
+*.jks
+*.keystore

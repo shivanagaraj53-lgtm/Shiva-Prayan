@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Daylight palette's muted accent, matching the plate the mark sits
+         on inside the app. -->
+    <color name="ic_launcher_background">#E3F0EA</color>
+</resources>

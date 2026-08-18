@@ -75,6 +75,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     final colors = context.colors;
     final text = Theme.of(context).textTheme;
     final auth = ref.read(authRepositoryProvider);
+    final federated = auth.supportedProviders
+        .where((p) => p != AuthProvider.emailPassword)
+        .toSet();
 
     return Scaffold(
       body: SafeArea(
@@ -190,37 +193,47 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                           ? 'I already have an account'
                           : 'Create a new account'),
                     ),
-                    const SizedBox(height: Spacing.lg),
-                    Row(
-                      children: [
-                        Expanded(child: Divider(color: colors.border)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: Spacing.md),
-                          child: Text(
-                            'or',
-                            style: text.bodySmall
-                                ?.copyWith(color: colors.textTertiary),
+                    // Only providers the backend can actually complete are
+                    // offered. On the device-local build that is email alone,
+                    // so the whole federated block disappears rather than
+                    // presenting buttons that fail when tapped.
+                    if (federated.isNotEmpty) ...[
+                      const SizedBox(height: Spacing.lg),
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: colors.border)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: Spacing.md),
+                            child: Text(
+                              'or',
+                              style: text.bodySmall
+                                  ?.copyWith(color: colors.textTertiary),
+                            ),
                           ),
-                        ),
-                        Expanded(child: Divider(color: colors.border)),
-                      ],
-                    ),
-                    const SizedBox(height: Spacing.lg),
-                    OutlinedButton.icon(
-                      onPressed: _busy
-                          ? null
-                          : () => _federated(auth.signInWithGoogle),
-                      icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
-                      label: const Text('Continue with Google'),
-                    ),
-                    const SizedBox(height: Spacing.sm),
-                    OutlinedButton.icon(
-                      onPressed:
-                          _busy ? null : () => _federated(auth.signInWithApple),
-                      icon: const Icon(Icons.apple_rounded),
-                      label: const Text('Continue with Apple'),
-                    ),
+                          Expanded(child: Divider(color: colors.border)),
+                        ],
+                      ),
+                      const SizedBox(height: Spacing.lg),
+                    ],
+                    if (federated.contains(AuthProvider.google)) ...[
+                      OutlinedButton.icon(
+                        onPressed: _busy
+                            ? null
+                            : () => _federated(auth.signInWithGoogle),
+                        icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
+                        label: const Text('Continue with Google'),
+                      ),
+                      const SizedBox(height: Spacing.sm),
+                    ],
+                    if (federated.contains(AuthProvider.apple))
+                      OutlinedButton.icon(
+                        onPressed: _busy
+                            ? null
+                            : () => _federated(auth.signInWithApple),
+                        icon: const Icon(Icons.apple_rounded),
+                        label: const Text('Continue with Apple'),
+                      ),
                     const SizedBox(height: Spacing.xl),
                     Text(
                       'Prayan never asks for your brokerage login. Your '

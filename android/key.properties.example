@@ -1,0 +1,15 @@
+# Copy to android/key.properties and fill in. That file is gitignored.
+#
+# Generate the upload key first:
+#
+#   keytool -genkey -v -keystore ~/prayan-upload.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+# Keep the .jks and these passwords somewhere you will still have them in five
+# years. Losing the upload key means you cannot ship an update to the same Play
+# listing without asking Google to reset it.
+
+storePassword=
+keyPassword=
+keyAlias=upload
+storeFile=/absolute/path/to/prayan-upload.jks

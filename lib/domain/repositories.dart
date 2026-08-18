@@ -56,11 +56,23 @@ class RepositoryException implements Exception {
   String toString() => 'RepositoryException($message)';
 }
 
+/// A way of signing in that a backend may or may not be able to serve.
+enum AuthProvider { emailPassword, google, apple }
+
 abstract interface class AuthRepository {
   /// Emits on sign-in, sign-out and token refresh. `null` means signed out.
   Stream<AuthUser?> authStateChanges();
 
   AuthUser? get currentUser;
+
+  /// The providers this backend can actually complete a sign-in with.
+  ///
+  /// The sign-in screen renders a button only for what is in here. Showing a
+  /// "Continue with Google" button that throws the moment it is tapped is an
+  /// App Review rejection under guideline 2.1 (App Completeness), and it is a
+  /// worse experience than not offering it — so availability is a property of
+  /// the backend rather than something the UI assumes.
+  Set<AuthProvider> get supportedProviders;
 
   Future<AuthUser> signInWithEmail(String email, String password);
   Future<AuthUser> registerWithEmail(String email, String password);
