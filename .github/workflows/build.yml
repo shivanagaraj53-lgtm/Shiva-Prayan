@@ -112,6 +112,19 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # Most of what the Android build downloads never changes between runs.
+      # Caching it is the real fix for dependency-resolution flakiness: the
+      # fewer requests to Maven Central, the less often it answers 429.
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -145,7 +158,31 @@ jobs:
           PROPS
 
       - name: Build app bundle
-        run: flutter build appbundle --release
+        # Gradle resolves plugins from Maven Central on a cold cache, and that
+        # host rate-limits shared CI ranges — the first run here died on a 429
+        # before compiling anything. Flutter's own retry waits 100ms, which a
+        # rate limit outlasts every time.
+        #
+        # So: retry, but only for failures that are actually transient. A
+        # genuine compile error fails on the first attempt rather than being
+        # tried three times and reported three minutes late.
+        run: |
+          set -o pipefail
+          for attempt in 1 2 3; do
+            if flutter build appbundle --release 2>&1 | tee /tmp/gradle-build.log; then
+              exit 0
+            fi
+            if grep -qiE "Too Many Requests|Could not GET|Could not resolve|Connection reset|Read timed out|502 Bad Gateway|503 Service" /tmp/gradle-build.log; then
+              wait=$((attempt * 60))
+              echo "::warning::Dependency download failed (attempt $attempt). Retrying in ${wait}s."
+              sleep "$wait"
+            else
+              echo "::error::Build failed for a reason that will not fix itself. Not retrying."
+              exit 1
+            fi
+          done
+          echo "::error::Dependency downloads still failing after 3 attempts."
+          exit 1
 
       - name: Report signing state
         run: |
