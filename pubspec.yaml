@@ -89,5 +89,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/brand/
+  # No asset directory is declared: the brand mark is drawn in code by
+  # PrayanMark, and the launcher icons are generated into the platform folders
+  # rather than bundled. An empty directory listed here is not tracked by git,
+  # so it analyses cleanly on the machine that created it and fails on every
+  # fresh clone.
