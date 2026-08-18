@@ -147,9 +147,36 @@ class OnboardingController extends StateNotifier<OnboardingDraft> {
 
     // Instantiate the chosen template, then apply the user's own thresholds
     // over it so the numbers they just typed are the ones that take effect.
+    //
+    // The starter rules are effective from the START OF THE USER'S TRADING DAY,
+    // not from the minute onboarding happened to finish. A trade is judged by
+    // the rule version that was live when it was opened, so anchoring to "now"
+    // means anything already logged today — including the sample journal, and
+    // any session the user back-fills after setting up — is measured against
+    // no rules at all and silently scores as though nothing applied. Someone
+    // who finishes onboarding at 3pm and then enters this morning's trades
+    // expects their rules to cover them, and this is the instant that makes
+    // that true. Later edits still close the old version at the edit instant,
+    // so the versioning guarantee is untouched.
+    final dayConfig = _ref.read(tradingDayConfigProvider);
+    final (dayStart, _) =
+        TradingDay.utcRangeFor(TradingDay.keyFor(now, dayConfig), dayConfig);
+
+    // When the worked example is loaded it may sit on an earlier session — the
+    // most recent weekday, if today is a weekend. The rules have to reach it,
+    // or the example demonstrates nothing, so they start from whichever came
+    // first. Both are written in this same step, so no rule is being
+    // backdated over a trade that already existed.
+    final sampleStart = draft.loadSampleJournal
+        ? SampleJournal.sessionStartFor(now, dayConfig)
+        : null;
+    final ruleStart = sampleStart != null && sampleStart.isBefore(dayStart)
+        ? sampleStart
+        : dayStart;
+
     final rules = draft.template.instantiate(
       userId: userId,
-      now: now,
+      now: ruleStart,
       idPrefix: '${userId}_rule',
     );
     final ruleRepository = _ref.read(ruleRepositoryProvider);
@@ -168,7 +195,7 @@ class OnboardingController extends StateNotifier<OnboardingDraft> {
             .read(strategyRepositoryProvider)
             .watchStrategies(userId)
             .first,
-        config: _ref.read(tradingDayConfigProvider),
+        config: dayConfig,
         userId: userId,
         account: account,
         now: now,

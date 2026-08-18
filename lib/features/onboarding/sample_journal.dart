@@ -25,7 +25,7 @@ class SampleJournal {
     required TradingAccount account,
     required DateTime now,
   }) async {
-    final sessionStart = _lastWeekdayMorning(now);
+    final sessionStart = sessionStartFor(now, config);
     final dayKey = TradingDay.keyFor(sessionStart, config);
 
     // Sample equity is used only if the user skipped entering their own, so
@@ -228,11 +228,27 @@ class SampleJournal {
   }
 
   /// 09:15 local on the most recent weekday, expressed in UTC.
-  static DateTime _lastWeekdayMorning(DateTime now) {
-    var day = DateTime.utc(now.year, now.month, now.day, 4, 0);
-    while (day.weekday == DateTime.saturday || day.weekday == DateTime.sunday) {
-      day = day.subtract(const Duration(days: 1));
+  ///
+  /// Anchored to the user's *trading day*, not to the UTC date. Reading the
+  /// UTC calendar here put the sample session on the previous trading day for
+  /// anyone far enough east — the trades were then judged against rules that
+  /// only became effective the following day, and the whole worked example
+  /// silently scored as though no rule applied.
+  static DateTime sessionStartFor(DateTime now, TradingDayConfig config) {
+    var key = TradingDay.keyFor(now, config);
+
+    // Step back over a weekend so the example lands on a plausible session.
+    for (var i = 0; i < 7; i++) {
+      final date = TradingDay.parseKey(key);
+      if (date == null) break;
+      if (date.weekday != DateTime.saturday &&
+          date.weekday != DateTime.sunday) {
+        break;
+      }
+      key = TradingDay.format(date.subtract(const Duration(days: 1)));
     }
-    return day;
+
+    final (dayStart, _) = TradingDay.utcRangeFor(key, config);
+    return dayStart.add(const Duration(hours: 9, minutes: 15));
   }
 }
