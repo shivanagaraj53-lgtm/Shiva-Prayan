@@ -68,7 +68,9 @@ class LocalAuthRepository implements AuthRepository {
     _controller.add(user);
   }
 
-  String _credentialKey(String email) => 'cred:${email.toLowerCase().trim()}';
+  static const _credentialPrefix = 'cred:';
+  String _credentialKey(String email) =>
+      '$_credentialPrefix${email.toLowerCase().trim()}';
 
   /// Deliberately not a password hash you would ship to production.
   ///
@@ -153,6 +155,7 @@ class LocalAuthRepository implements AuthRepository {
       jsonEncode({'userId': id, 'hash': _obscure(password, id)}),
     );
     final user = _userFor(id, normalised);
+    await _store.setString(Collections.lastIdentifierKey, normalised);
     await _setSession(user);
     return user;
   }
@@ -166,6 +169,7 @@ class LocalAuthRepository implements AuthRepository {
         'No account found for that '
         '${_looksLikeEmail(normalised) ? 'email' : 'username'}.',
         isRetryable: false,
+        failure: RepositoryFailure.noSuchAccount,
       );
     }
     final record = jsonDecode(raw) as Map<String, dynamic>;
@@ -177,6 +181,7 @@ class LocalAuthRepository implements AuthRepository {
       );
     }
     final user = _userFor(userId, normalised);
+    await _store.setString(Collections.lastIdentifierKey, normalised);
     await _setSession(user);
     return user;
   }
@@ -190,6 +195,15 @@ class LocalAuthRepository implements AuthRepository {
   /// would be theatre — the identifier is a key in a local store.
   @override
   AuthIdentifier get identifierKind => AuthIdentifier.emailOrUsername;
+
+  /// Exactly: an account exists here if a credential is stored here.
+  @override
+  Future<bool> hasExistingAccount() async =>
+      _store.hasKeyStartingWith(_credentialPrefix);
+
+  @override
+  Future<String?> lastUsedIdentifier() async =>
+      _store.getString(Collections.lastIdentifierKey);
 
   @override
   Future<AuthUser> signInWithGoogle() => _federatedUnavailable('Google');
@@ -238,6 +252,10 @@ class LocalAuthRepository implements AuthRepository {
     if (user != null) {
       await _store.removeKey(_credentialKey(user.identifier));
     }
+    // "Delete my account" has to take the name off the door as well; a
+    // prefilled identifier for an account that no longer exists is exactly the
+    // dead end this whole change is about.
+    await _store.removeKey(Collections.lastIdentifierKey);
     await _store.clearAll();
     await _setSession(null);
   }

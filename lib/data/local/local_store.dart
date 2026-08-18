@@ -125,6 +125,13 @@ class LocalStore {
     }
   }
 
+  /// Whether any key starts with [prefix].
+  ///
+  /// Used to answer "is there an account on this device at all", which the
+  /// sign-in screen needs before it decides which of its two modes to open in.
+  bool hasKeyStartingWith(String prefix) =>
+      _prefs.getKeys().any((k) => k.startsWith(prefix));
+
   /// A single scalar value, for things that are not documents.
   String? getString(String key) => _prefs.getString(key);
   Future<void> setString(String key, String value) =>
@@ -160,4 +167,7 @@ class Collections {
   static const prefsKey = 'appPreferences';
   static const notificationPrefsKey = 'notificationPreferences';
   static const sessionUserKey = 'sessionUser';
+
+  /// The identifier last signed in with on this device. Never the password.
+  static const lastIdentifierKey = 'lastIdentifier';
 }

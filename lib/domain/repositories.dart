@@ -51,6 +51,20 @@ class AuthUser {
   String get identifier => email ?? username ?? id;
 }
 
+/// Why a repository call failed, when a screen needs to do something about it
+/// rather than just show the sentence.
+///
+/// Deliberately tiny. A screen matching on the *text* of an error breaks the
+/// day someone rewords it, and rewording user-facing copy should never be a
+/// behavioural change.
+enum RepositoryFailure {
+  /// No account exists for the identifier given.
+  noSuchAccount,
+
+  /// Anything else. The message is the whole story.
+  other,
+}
+
 /// A failure that already carries a sentence fit to show a user.
 ///
 /// Repositories translate transport errors here, so no screen ever has to
@@ -64,11 +78,17 @@ class RepositoryException implements Exception {
 
   final bool isRetryable;
 
+  /// What went wrong, for the rare case a screen must branch on it.
+  final RepositoryFailure failure;
+
   const RepositoryException(
     this.message, {
     this.cause,
     this.isRetryable = true,
+    this.failure = RepositoryFailure.other,
   });
+
+  bool get isNoSuchAccount => failure == RepositoryFailure.noSuchAccount;
 
   @override
   String toString() => 'RepositoryException($message)';
@@ -110,6 +130,22 @@ abstract interface class AuthRepository {
 
   /// What this backend accepts as the account identifier.
   AuthIdentifier get identifierKind;
+
+  /// Whether signing in could succeed on this device at all.
+  ///
+  /// A device-local backend knows exactly: with no stored credentials there is
+  /// nothing to sign into, and offering "Sign in" first means a new user's
+  /// first experience of the app is being told their account does not exist.
+  /// A server-backed one cannot know — the account may have been created on
+  /// another phone — so it answers true and lets the attempt decide.
+  Future<bool> hasExistingAccount();
+
+  /// The identifier last used to sign in on this device, if any.
+  ///
+  /// Only ever the identifier: the password is not something to remember for
+  /// someone. Lets a returning user tap straight into the password field
+  /// rather than retype an address they may have typed differently.
+  Future<String?> lastUsedIdentifier();
 
   Future<AuthUser> signInWithEmail(String email, String password);
   Future<AuthUser> registerWithEmail(String email, String password);

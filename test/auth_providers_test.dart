@@ -28,6 +28,12 @@ class _FakeAuth implements AuthRepository {
   final AuthIdentifier identifierKind = AuthIdentifier.email;
 
   @override
+  Future<bool> hasExistingAccount() async => true;
+
+  @override
+  Future<String?> lastUsedIdentifier() async => null;
+
+  @override
   AuthUser? get currentUser => null;
 
   @override

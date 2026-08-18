@@ -21,10 +21,40 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
 
+  /// Which mode the screen opens in is not a default to guess at.
+  ///
+  /// On a device with no account, "Sign in" is a button that cannot succeed,
+  /// and opening on it means a new user's first experience of Prayan is being
+  /// told their account was not found. Resolved from the backend before the
+  /// form is shown.
   bool _isRegistering = false;
+  bool _ready = false;
+
   bool _obscurePassword = true;
   bool _busy = false;
   String? _error;
+
+  /// Set when a sign-in failed because no such account exists, so the error
+  /// can offer the one thing that fixes it.
+  bool _offerToCreate = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveOpeningMode();
+  }
+
+  Future<void> _resolveOpeningMode() async {
+    final auth = ref.read(authRepositoryProvider);
+    final existing = await auth.hasExistingAccount();
+    final last = existing ? await auth.lastUsedIdentifier() : null;
+    if (!mounted) return;
+    setState(() {
+      _isRegistering = !existing;
+      if (last != null) _email.text = last;
+      _ready = true;
+    });
+  }
 
   @override
   void dispose() {
@@ -50,10 +80,27 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       // Navigation is handled by the router's redirect, which reacts to the
       // auth stream — no imperative push here.
     } on RepositoryException catch (error) {
-      if (mounted) setState(() => _error = error.message);
+      if (mounted) {
+        setState(() {
+          _error = error.message;
+          // "No account found" is not a dead end, it is a fork: the fix is one
+          // tap away and the user has already typed everything it needs.
+          _offerToCreate = !_isRegistering && error.isNoSuchAccount;
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Switches to creating the account the user just tried to sign in to,
+  /// keeping what they typed. Retyping it is how a second typo happens.
+  void _switchToCreating() {
+    setState(() {
+      _isRegistering = true;
+      _error = null;
+      _offerToCreate = false;
+    });
   }
 
   Future<void> _federated(Future<AuthUser> Function() action) async {
@@ -81,6 +128,15 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     // Ask for what this backend can key an account by, rather than demanding
     // an email address for a field nothing will ever send mail to.
     final usernames = auth.identifierKind == AuthIdentifier.emailOrUsername;
+
+    // Until the backend has said whether there is anything to sign into, the
+    // screen has no honest heading to show — "Welcome back" flashing at
+    // someone who has never been here is exactly the confusion being fixed.
+    if (!_ready) {
+      return const Scaffold(
+        body: Center(child: PrayanMark(size: 64)),
+      );
+    }
 
     return Scaffold(
       body: SafeArea(
@@ -197,7 +253,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                         title: _isRegistering
                             ? 'Could not create the account'
                             : 'Could not sign in',
-                        message: _error!,
+                        message: _offerToCreate
+                            ? '$_error There is no account on this device '
+                                'until you create one — nothing is stored on '
+                                'a server.'
+                            : _error!,
+                        actionLabel: _offerToCreate ? 'Create this account' : null,
+                        onRetry: _offerToCreate ? _switchToCreating : null,
                       ),
                     ],
                     const SizedBox(height: Spacing.xl),

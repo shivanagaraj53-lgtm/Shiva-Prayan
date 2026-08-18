@@ -86,11 +86,16 @@ class ErrorState extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
 
+  /// Names the action when "Try again" is the wrong verb — an error whose fix
+  /// is to do something different, not to repeat what just failed.
+  final String? actionLabel;
+
   const ErrorState({
     super.key,
     required this.title,
     required this.message,
     this.onRetry,
+    this.actionLabel,
   });
 
   @override
@@ -118,7 +123,10 @@ class ErrorState extends StatelessWidget {
           ),
           if (onRetry != null) ...[
             const SizedBox(height: Spacing.md),
-            OutlinedButton(onPressed: onRetry, child: const Text('Try again')),
+            OutlinedButton(
+              onPressed: onRetry,
+              child: Text(actionLabel ?? 'Try again'),
+            ),
           ],
         ],
       ),

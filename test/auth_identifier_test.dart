@@ -30,6 +30,14 @@ class _FakeAuth implements AuthRepository {
   @override
   final AuthIdentifier identifierKind;
 
+  // Always answers yes, so these tests land on the sign-in form. Which mode
+  // the screen opens in is covered by `test/sign_in_entry_test.dart`.
+  @override
+  Future<bool> hasExistingAccount() async => true;
+
+  @override
+  Future<String?> lastUsedIdentifier() async => null;
+
   @override
   Set<AuthProvider> get supportedProviders => const {
         AuthProvider.emailPassword,
