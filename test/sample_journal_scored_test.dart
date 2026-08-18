@@ -42,13 +42,21 @@ void main() {
     Strategy(id: 'user_strategy_1', userId: 'user', name: 'Pullback'),
   ];
 
-  /// The instant onboarding now makes the starter rules effective from.
+  /// The instant onboarding makes the starter rules effective from.
+  ///
+  /// This mirrors `OnboardingController` exactly, and it has to: the sample
+  /// session can be dated to an *earlier* trading day than the one onboarding
+  /// finishes in — before the bell, or over a weekend — and rules anchored to
+  /// today would then not reach it. Onboarding backdates to whichever comes
+  /// first. A helper that only used today's day start would pass here while
+  /// production failed, which is the wrong way round for a regression test.
   DateTime ruleStartFor(DateTime now) {
-    final (start, _) = TradingDay.utcRangeFor(
+    final (dayStart, _) = TradingDay.utcRangeFor(
       TradingDay.keyFor(now, config),
       config,
     );
-    return start;
+    final sampleStart = SampleJournal.sessionStartFor(now, config);
+    return sampleStart.isBefore(dayStart) ? sampleStart : dayStart;
   }
 
   /// Installs the sample journal through the real local repository — the same
@@ -113,6 +121,44 @@ void main() {
           reason: 'a day containing a rule-breaking trade scored full marks');
     });
   }
+
+  test('the example session is always already finished', () async {
+    // Three *closed* trades dated to a session that has not happened yet is a
+    // journal full of trades from the future. It shows up for anyone opening
+    // the app before the market opens — which the clock sweep above misses,
+    // because those all run after 09:15 IST on a weekday.
+    //
+    // 00:00 and 02:00 UTC are 05:30 and 07:30 IST: same trading day, before
+    // the bell. Saturday and Sunday are here because the walk back has to
+    // clear a weekend as well.
+    final clocks = <DateTime>[
+      DateTime.utc(2026, 3, 16, 0),   // Mon 05:30 IST, before the open
+      DateTime.utc(2026, 3, 16, 2),   // Mon 07:30 IST, before the open
+      DateTime.utc(2026, 3, 16, 3, 44), // Mon, one minute before the bell
+      DateTime.utc(2026, 3, 14, 12),  // Saturday
+      DateTime.utc(2026, 3, 15, 12),  // Sunday
+      DateTime.utc(2026, 8, 18, 21, 30), // 03:00 IST the next day
+    ];
+
+    for (final now in clocks) {
+      final saved = await installSample(now);
+      expect(saved, isNotEmpty, reason: 'no sample trades written at $now');
+
+      for (final trade in saved) {
+        expect(trade.openedAtUtc.isBefore(now), isTrue,
+            reason: 'a sample trade opens in the future: '
+                '${trade.symbol} at ${trade.openedAtUtc} with now = $now');
+        final closed = trade.closedAtUtc;
+        expect(closed != null && closed.isBefore(now), isTrue,
+            reason: 'a sample trade closes in the future: '
+                '${trade.symbol} at $closed with now = $now');
+      }
+
+      // And it still has to be scored, by the rules onboarding would create.
+      expect(scoreDay(saved, now).rulesApplicable, greaterThan(3),
+          reason: 'rules do not reach the sample session at $now');
+    }
+  });
 
   test('the disciplined loss outscores the profitable rule-break', () async {
     // The demonstration only works if this inversion holds. Checked at an

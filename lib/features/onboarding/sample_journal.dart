@@ -234,21 +234,44 @@ class SampleJournal {
   /// anyone far enough east — the trades were then judged against rules that
   /// only became effective the following day, and the whole worked example
   /// silently scored as though no rule applied.
+  /// Opening bell of the example session, as an offset into the trading day.
+  static const _sessionOpen = Duration(hours: 9, minutes: 15);
+
+  /// How long the example session runs: the last trade opens two hours in and
+  /// is held for forty minutes.
+  static const _sessionLength = Duration(hours: 2, minutes: 40);
+
   static DateTime sessionStartFor(DateTime now, TradingDayConfig config) {
     var key = TradingDay.keyFor(now, config);
 
-    // Step back over a weekend so the example lands on a plausible session.
-    for (var i = 0; i < 7; i++) {
+    // Walk back to a session that is a weekday AND has already finished. The
+    // example is three *closed* trades, so dating it to a session that has not
+    // happened yet produces a journal full of trades from the future — which
+    // is what happens to anyone opening the app before the market opens.
+    for (var i = 0; i < 10; i++) {
       final date = TradingDay.parseKey(key);
       if (date == null) break;
-      if (date.weekday != DateTime.saturday &&
-          date.weekday != DateTime.sunday) {
-        break;
+
+      final isWeekend = date.weekday == DateTime.saturday ||
+          date.weekday == DateTime.sunday;
+      if (!isWeekend) {
+        final (dayStart, _) = TradingDay.utcRangeFor(key, config);
+        final candidate = dayStart.add(_sessionOpen);
+        if (candidate.add(_sessionLength).isBefore(now)) return candidate;
       }
+
       key = TradingDay.format(date.subtract(const Duration(days: 1)));
     }
 
-    final (dayStart, _) = TradingDay.utcRangeFor(key, config);
-    return dayStart.add(const Duration(hours: 9, minutes: 15));
+    // Unreachable in practice — ten days always contains a finished weekday.
+    // Falling back to a week ago keeps the example in the past regardless.
+    final (fallback, _) = TradingDay.utcRangeFor(
+      TradingDay.format(
+        (TradingDay.parseKey(TradingDay.keyFor(now, config)) ?? now)
+            .subtract(const Duration(days: 7)),
+      ),
+      config,
+    );
+    return fallback.add(_sessionOpen);
   }
 }
