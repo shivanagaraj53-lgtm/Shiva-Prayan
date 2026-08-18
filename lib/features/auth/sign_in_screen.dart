@@ -78,6 +78,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     final federated = auth.supportedProviders
         .where((p) => p != AuthProvider.emailPassword)
         .toSet();
+    // Ask for what this backend can key an account by, rather than demanding
+    // an email address for a field nothing will ever send mail to.
+    final usernames = auth.identifierKind == AuthIdentifier.emailOrUsername;
 
     return Scaffold(
       body: SafeArea(
@@ -109,19 +112,46 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     const SizedBox(height: Spacing.xxl),
                     TextFormField(
                       controller: _email,
-                      keyboardType: TextInputType.emailAddress,
+                      keyboardType: usernames
+                          ? TextInputType.text
+                          : TextInputType.emailAddress,
                       autocorrect: false,
-                      autofillHints: const [AutofillHints.email],
+                      autofillHints: [
+                        if (usernames)
+                          AutofillHints.username
+                        else
+                          AutofillHints.email,
+                      ],
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.mail_outline_rounded),
+                      decoration: InputDecoration(
+                        labelText: usernames ? 'Email or username' : 'Email',
+                        prefixIcon: Icon(usernames
+                            ? Icons.person_outline_rounded
+                            : Icons.mail_outline_rounded),
                       ),
                       validator: (value) {
                         final input = value?.trim() ?? '';
-                        if (input.isEmpty) return 'Enter your email address.';
-                        if (!input.contains('@') || input.length < 5) {
+                        if (input.isEmpty) {
+                          return usernames
+                              ? 'Enter your email address or username.'
+                              : 'Enter your email address.';
+                        }
+                        // An address still has to look like one either way; a
+                        // half-typed `shiva@` is a slip, not a username.
+                        if (input.contains('@')) {
+                          final parts = input.split('@');
+                          if (parts.length != 2 ||
+                              parts.first.isEmpty ||
+                              !parts.last.contains('.')) {
+                            return 'That does not look like an email address.';
+                          }
+                          return null;
+                        }
+                        if (!usernames) {
                           return 'That does not look like an email address.';
+                        }
+                        if (input.length < 3) {
+                          return 'A username needs at least 3 characters.';
                         }
                         return null;
                       },

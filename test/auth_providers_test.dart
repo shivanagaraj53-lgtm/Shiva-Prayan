@@ -22,6 +22,11 @@ class _FakeAuth implements AuthRepository {
   @override
   final Set<AuthProvider> supportedProviders;
 
+  // What this backend keys accounts by is not what these tests are about;
+  // `test/auth_identifier_test.dart` covers that.
+  @override
+  final AuthIdentifier identifierKind = AuthIdentifier.email;
+
   @override
   AuthUser? get currentUser => null;
 

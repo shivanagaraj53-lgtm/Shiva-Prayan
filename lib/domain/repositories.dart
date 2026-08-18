@@ -19,7 +19,18 @@ import 'models.dart';
 /// id and nothing else about the person.
 class AuthUser {
   final String id;
+
+  /// Set only when the account really is keyed by an email address.
+  ///
+  /// A backend with no server behind it can let someone sign in as `shiva`,
+  /// and writing that into an email field is a lie that outlives the moment:
+  /// the day anything sends mail, it sends it to nobody. So a username lands
+  /// in [username] and this stays null.
   final String? email;
+
+  /// Set instead of [email] when the account is keyed by a plain username.
+  final String? username;
+
   final String? displayName;
   final bool isEmailVerified;
   final bool isAnonymous;
@@ -27,10 +38,17 @@ class AuthUser {
   const AuthUser({
     required this.id,
     this.email,
+    this.username,
     this.displayName,
     this.isEmailVerified = false,
     this.isAnonymous = false,
   });
+
+  /// What this person typed to sign in, whichever kind it is.
+  ///
+  /// Falls back to the user id so a screen showing "you are signed in as…"
+  /// always has something true to show.
+  String get identifier => email ?? username ?? id;
 }
 
 /// A failure that already carries a sentence fit to show a user.
@@ -59,6 +77,22 @@ class RepositoryException implements Exception {
 /// A way of signing in that a backend may or may not be able to serve.
 enum AuthProvider { emailPassword, google, apple }
 
+/// What a backend accepts as the account identifier.
+///
+/// Declared by the repository for the same reason [AuthProvider] is: the
+/// screen should ask for what the backend can actually use, rather than
+/// demanding an email address for a field nothing will ever send mail to.
+enum AuthIdentifier {
+  /// An email address, and nothing else. Required by any backend that sends
+  /// mail — verification, password reset — or federates identity.
+  email,
+
+  /// An email address or a plain username, whichever the user prefers. Only
+  /// honest for a device-local backend, where the identifier is a key in a
+  /// local store and nothing more.
+  emailOrUsername,
+}
+
 abstract interface class AuthRepository {
   /// Emits on sign-in, sign-out and token refresh. `null` means signed out.
   Stream<AuthUser?> authStateChanges();
@@ -73,6 +107,9 @@ abstract interface class AuthRepository {
   /// worse experience than not offering it — so availability is a property of
   /// the backend rather than something the UI assumes.
   Set<AuthProvider> get supportedProviders;
+
+  /// What this backend accepts as the account identifier.
+  AuthIdentifier get identifierKind;
 
   Future<AuthUser> signInWithEmail(String email, String password);
   Future<AuthUser> registerWithEmail(String email, String password);

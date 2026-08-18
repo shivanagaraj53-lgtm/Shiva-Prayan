@@ -76,9 +76,11 @@ Until then: option 1, added to the home screen.
 There is no server. Accounts are created and stored on the device, so you
 choose the credentials at the moment you create them.
 
-On the first screen tap **Create a new account**, then use any email address
-and any password of **8 characters or more**. Nothing is sent anywhere and
-nothing checks the address is real.
+On the first screen tap **Create a new account**, then use any username or
+email address and any password of **8 characters or more**. A username needs
+three characters and no spaces; an email address has to look like one. Nothing
+is sent anywhere and nothing checks that an address is real — which is exactly
+why a username is allowed: this build has no server to mail you.
 
 If you would rather use the same credentials as the App Review notes:
 
@@ -91,6 +93,12 @@ Because the account lives on the device, these do not carry across from your
 phone to the browser build, or from one install to the next. Creating the
 account again is the way back in — there is no password reset, because there is
 nobody to reset it with.
+
+One thing worth knowing before you choose: the password is kept on the device
+behind a scrambling step that is deliberately **not** a real password hash —
+`local_repositories.dart` says so in as many words, because the production
+answer is Firebase Authentication, which never sees the password at all. Until
+that is wired up, use a password you do not use anywhere else.
 
 ## Seeing the app with something in it
 

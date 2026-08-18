@@ -85,15 +85,53 @@ class LocalAuthRepository implements AuthRepository {
     return hash.toRadixString(16);
   }
 
-  @override
-  Future<AuthUser> registerWithEmail(String email, String password) async {
-    final normalised = email.toLowerCase().trim();
-    if (!normalised.contains('@') || normalised.length < 5) {
+  /// Whether [identifier] is being used as an email address.
+  ///
+  /// The presence of an `@` is the whole test. Someone typing an address gets
+  /// an address; someone typing `shiva` gets a username. Nothing else in the
+  /// app has to care which it was.
+  static bool _looksLikeEmail(String identifier) => identifier.contains('@');
+
+  /// Rejects an identifier this store cannot key an account by.
+  ///
+  /// An address still has to look like one — a half-typed `shiva@` is far
+  /// more likely to be a mistake than a deliberate choice, and it would
+  /// otherwise become an account nobody could find their way back into.
+  static void _checkIdentifier(String identifier) {
+    if (_looksLikeEmail(identifier)) {
+      final parts = identifier.split('@');
+      if (parts.length != 2 || parts[0].isEmpty || !parts[1].contains('.')) {
+        throw const RepositoryException(
+          'That does not look like a valid email address.',
+          isRetryable: false,
+        );
+      }
+      return;
+    }
+    if (identifier.length < 3) {
       throw const RepositoryException(
-        'That does not look like a valid email address.',
+        'Choose a username of at least 3 characters.',
         isRetryable: false,
       );
     }
+    if (identifier.contains(RegExp(r'\s'))) {
+      throw const RepositoryException(
+        'A username cannot contain spaces.',
+        isRetryable: false,
+      );
+    }
+  }
+
+  AuthUser _userFor(String id, String identifier) => AuthUser(
+        id: id,
+        email: _looksLikeEmail(identifier) ? identifier : null,
+        username: _looksLikeEmail(identifier) ? null : identifier,
+      );
+
+  @override
+  Future<AuthUser> registerWithEmail(String email, String password) async {
+    final normalised = email.toLowerCase().trim();
+    _checkIdentifier(normalised);
     if (password.length < 8) {
       throw const RepositoryException(
         'Choose a password of at least 8 characters.',
@@ -101,8 +139,10 @@ class LocalAuthRepository implements AuthRepository {
       );
     }
     if (_store.getString(_credentialKey(normalised)) != null) {
-      throw const RepositoryException(
-        'An account already exists for that email. Try signing in instead.',
+      throw RepositoryException(
+        'An account already exists for that '
+        '${_looksLikeEmail(normalised) ? 'email' : 'username'}. '
+        'Try signing in instead.',
         isRetryable: false,
       );
     }
@@ -112,7 +152,7 @@ class LocalAuthRepository implements AuthRepository {
       _credentialKey(normalised),
       jsonEncode({'userId': id, 'hash': _obscure(password, id)}),
     );
-    final user = AuthUser(id: id, email: normalised);
+    final user = _userFor(id, normalised);
     await _setSession(user);
     return user;
   }
@@ -122,8 +162,9 @@ class LocalAuthRepository implements AuthRepository {
     final normalised = email.toLowerCase().trim();
     final raw = _store.getString(_credentialKey(normalised));
     if (raw == null) {
-      throw const RepositoryException(
-        'No account found for that email.',
+      throw RepositoryException(
+        'No account found for that '
+        '${_looksLikeEmail(normalised) ? 'email' : 'username'}.',
         isRetryable: false,
       );
     }
@@ -135,7 +176,7 @@ class LocalAuthRepository implements AuthRepository {
         isRetryable: false,
       );
     }
-    final user = AuthUser(id: userId, email: normalised);
+    final user = _userFor(userId, normalised);
     await _setSession(user);
     return user;
   }
@@ -144,6 +185,11 @@ class LocalAuthRepository implements AuthRepository {
   /// Federated sign-in needs Firebase Auth, so it is not offered here.
   @override
   Set<AuthProvider> get supportedProviders => const {AuthProvider.emailPassword};
+
+  /// Nothing here sends mail, so nothing here needs an address. Demanding one
+  /// would be theatre — the identifier is a key in a local store.
+  @override
+  AuthIdentifier get identifierKind => AuthIdentifier.emailOrUsername;
 
   @override
   Future<AuthUser> signInWithGoogle() => _federatedUnavailable('Google');
@@ -185,8 +231,12 @@ class LocalAuthRepository implements AuthRepository {
   @override
   Future<void> deleteAccount() async {
     final user = _current;
-    if (user != null && user.email != null) {
-      await _store.removeKey(_credentialKey(user.email!));
+    // Keyed on the identifier, not the email: a username account has no email,
+    // and keying on one leaves the credential behind after "delete my account"
+    // — the data gone but the login still working, which is the one outcome
+    // both stores treat as a policy violation.
+    if (user != null) {
+      await _store.removeKey(_credentialKey(user.identifier));
     }
     await _store.clearAll();
     await _setSession(null);
