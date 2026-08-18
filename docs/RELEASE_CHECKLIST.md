@@ -20,7 +20,7 @@ machine, or a decision that is yours.
 | **No Apple Developer / Play Console account wired up** | Nothing can be uploaded without one | Enrol (Apple $99/yr, Play $25 one-off), create the app records |
 | **No signed iOS build** | The iOS app now **compiles on CI** (verified, unsigned, on macOS). Producing an uploadable IPA needs a distribution certificate | Enrol, then add the certificate secrets listed in `.github/workflows/build.yml` |
 | **No Android upload key** | The release bundle now **builds on CI** (verified, 51 MB AAB). It is unsigned until `android/key.properties` exists — deliberately, so a debug-signed bundle can never reach Play | `keytool -genkey` per `android/key.properties.example` |
-| **The app has never run on a physical device** | Every test so far is a unit, widget or browser test. Touch targets, keyboard behaviour, scroll physics and text input are unverified on real hardware | An hour with one iPhone and one Android phone |
+| **The app has never run on a physical device** | Every test so far is a unit, widget or browser test. Touch targets, keyboard behaviour, scroll physics and text input are unverified on real hardware | **Android: nothing — CI now emits an installable APK, see `docs/INSTALL_ON_YOUR_PHONE.md`.** iPhone still needs the Apple account |
 | **Privacy policy and terms not yet hosted** | Both stores require a reachable URL. The documents are written — `store/legal/` — but a URL is needed | Publish `store/legal/*.md`, fill in the bracketed entity name and jurisdiction |
 | ~~No store screenshots~~ | Done — `store/screenshots/`, three device classes | — |
 | **Firebase is not connected** | The app works fully on device-local storage, but there is no sync, no account recovery and no server-authoritative scoring | `docs/FIREBASE_SETUP.md`, then the backend in `Shiva-PrayanAI` |
@@ -109,7 +109,7 @@ advice. The app is built not to be, and the listing has to match:
 
 ```bash
 flutter analyze                                   # 0 issues
-flutter test                                      # 60 widget/accessibility tests
+flutter test                                      # 69 widget/accessibility tests
 cd packages/prayan_core && dart test              # 157 domain tests
 dart run tool/generate_launcher_icons.dart        # regenerate icons
 
@@ -118,10 +118,13 @@ flutter build ipa --release                       # needs macOS + Xcode
 ```
 
 - [x] Analyzer clean
-- [x] 217 tests passing across the app and domain package
+- [x] 226 tests passing across the app and domain package
 - [x] Release shrinking enabled (`isMinifyEnabled`, `isShrinkResources`)
 - [x] **Android release bundle builds** — verified on CI, 51 MB AAB artifact
 - [x] **iOS app compiles and links** — verified on CI, unsigned, on macOS
+- [x] **An installable Android APK is produced on every push** — signed with a
+      keystore CI generates and discards, so it can go on a phone today and can
+      never be mistaken for an upload build (`prayan-sideload-apk`, 25 MB)
 - [x] Release shrinking (R8) survives a real Android build
 - [x] Gradle dependencies cached, with retry limited to transient download
       failures, so a Maven Central rate limit does not read as a code failure
@@ -132,7 +135,8 @@ flutter build ipa --release                       # needs macOS + Xcode
 > behaves correctly on a phone. Compilation and runtime are different claims,
 > and only the second one matters to a user. The device pass below is still the
 > largest untested gap.
-- [ ] Tested on a physical iPhone and a physical Android device
+- [ ] Tested on a physical iPhone and a physical Android device — the Android
+      half is now only a download away; see `docs/INSTALL_ON_YOUR_PHONE.md`
 - [ ] Tested at largest dynamic-type setting and with a screen reader on device
 
 ## Submission
