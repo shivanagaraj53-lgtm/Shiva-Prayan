@@ -51,6 +51,43 @@ class Routes {
   static const settings = '/settings';
 }
 
+/// Where a user at [path] should actually be, or null to leave them there.
+///
+/// A pure function on purpose. The rule it encodes — which screens exist for
+/// someone who is not signed in — is the kind that is easy to get subtly wrong
+/// and hard to notice, and testing it through a live router means pumping a
+/// splash screen that animates forever. Here it is three arguments and an
+/// answer.
+String? redirectFor({
+  required bool authLoading,
+  required bool signedIn,
+  required bool onboardingComplete,
+  required String path,
+}) {
+  // Hold on the splash while the first auth event is still in flight.
+  if (authLoading) return path == Routes.splash ? null : Routes.splash;
+
+  // Signed out, there is exactly one screen worth being on. Onboarding is not
+  // one of them: every step it takes writes against a user id, so without a
+  // user it is a form with nowhere to save to. It used to be allowed here,
+  // which meant reloading the page mid-onboarding after a session was lost
+  // left someone filling in twelve steps for nobody.
+  if (!signedIn) return path == Routes.signIn ? null : Routes.signIn;
+
+  // A signed-in user with no completed profile always lands in onboarding.
+  if (!onboardingComplete) {
+    return path == Routes.onboarding ? null : Routes.onboarding;
+  }
+
+  // A completed user has no reason to sit on splash, sign-in or onboarding.
+  if (path == Routes.splash ||
+      path == Routes.signIn ||
+      path == Routes.onboarding) {
+    return Routes.dashboard;
+  }
+  return null;
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   // Redirects re-run whenever auth or the profile changes, so completing
   // onboarding moves the user forward without any imperative navigation.
@@ -61,33 +98,13 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: refreshListenable,
     redirect: (context, state) {
       final auth = ref.read(authStateProvider);
-      final path = state.matchedLocation;
-
-      // Hold on the splash while the first auth event is still in flight.
-      if (auth.isLoading) {
-        return path == Routes.splash ? null : Routes.splash;
-      }
-
-      final user = auth.value;
-      final isAuthRoute = path == Routes.signIn || path == Routes.onboarding;
-
-      if (user == null) {
-        return isAuthRoute ? null : Routes.signIn;
-      }
-
       final profile = ref.read(profileProvider).value;
-      // A signed-in user with no completed profile always lands in onboarding.
-      if (profile == null || !profile.onboardingComplete) {
-        return path == Routes.onboarding ? null : Routes.onboarding;
-      }
-
-      // A completed user has no reason to sit on splash or sign-in.
-      if (path == Routes.splash ||
-          path == Routes.signIn ||
-          path == Routes.onboarding) {
-        return Routes.dashboard;
-      }
-      return null;
+      return redirectFor(
+        authLoading: auth.isLoading,
+        signedIn: auth.value != null,
+        onboardingComplete: profile?.onboardingComplete ?? false,
+        path: state.matchedLocation,
+      );
     },
     routes: [
       GoRoute(
