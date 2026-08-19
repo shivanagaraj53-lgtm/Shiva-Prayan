@@ -147,20 +147,23 @@ class _DashboardBody extends ConsumerWidget {
       sliver: SliverList.list(
         children: [
           // 1. How disciplined was I today?
-          _DisciplineHero(snapshot: snapshot),
+          Entrance(child: _DisciplineHero(snapshot: snapshot)),
           const SizedBox(height: Spacing.md),
 
           // 2. Am I inside my limits?
-          _LimitsSection(snapshot: snapshot),
+          Entrance(index: 1, child: _LimitsSection(snapshot: snapshot)),
 
           const SizedBox(height: Spacing.section),
 
           // 3. What should I review before my next trade?
           if (headline != null) ...[
             const SectionHeader(title: 'Worth noticing'),
-            CoachingStrip(
-              insight: headline,
-              onTap: () => context.push(Routes.dailyReview(snapshot.dayKey)),
+            Entrance(
+              index: 2,
+              child: CoachingStrip(
+                insight: headline,
+                onTap: () => context.push(Routes.dailyReview(snapshot.dayKey)),
+              ),
             ),
             const SizedBox(height: Spacing.section),
           ],
@@ -304,34 +307,50 @@ class _DisciplineHero extends StatelessWidget {
     if (snapshot.trades.isEmpty) {
       return PrayanCard(
         lift: CardLift.lifted,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.lerp(colors.accentDeep, colors.accent, 0.35)!,
+            colors.accentDeep,
+          ],
+        ),
         child: Row(
           children: [
             Container(
               width: Sizes.scoreRingCompact,
               height: Sizes.scoreRingCompact,
               decoration: BoxDecoration(
-                color: colors.accentMuted,
+                color: Colors.white.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.22),
+                ),
               ),
               child: Icon(Icons.play_arrow_rounded,
-                  size: 34, color: colors.accent),
+                  size: 34, color: colors.accentBright),
             ),
             const SizedBox(width: Spacing.lg),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Today is open', style: text.titleMedium),
+                  Text(
+                    'Today is open',
+                    style: text.titleMedium?.copyWith(color: Colors.white),
+                  ),
                   const SizedBox(height: Spacing.xs),
                   Text(
                     'Nothing logged yet. Your score appears once there is a '
                     'trade to measure it against.',
-                    style:
-                        text.bodySmall?.copyWith(color: colors.textSecondary),
+                    style: text.bodySmall?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.78),
+                      height: 1.45,
+                    ),
                   ),
                   if (streak > 0) ...[
                     const SizedBox(height: Spacing.md),
-                    _Streak(days: streak),
+                    _Streak(days: streak, onDark: true),
                   ],
                 ],
               ),
@@ -341,32 +360,51 @@ class _DisciplineHero extends StatelessWidget {
       );
     }
 
+    // The one panel in the product that is allowed to look like a poster.
+    // Everything else on the screen is a flat card on a light ground; this is
+    // the number the app exists to produce, so it gets the depth, the light
+    // and the only gradient on the page.
     return PrayanCard(
       lift: CardLift.lifted,
       onTap: () => context.push(Routes.discipline),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color.lerp(colors.accentDeep, colors.accent, 0.35)!,
+          colors.accentDeep,
+        ],
+      ),
       child: Row(
         children: [
           ScoreRing(
             score: snapshot.score.hasScore ? snapshot.score.value : null,
             caption: 'Today',
             wasCapped: snapshot.score.wasCappedByMajorViolation,
+            onDark: true,
           ),
           const SizedBox(width: Spacing.lg),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Discipline', style: text.titleMedium),
+                Text(
+                  'Discipline',
+                  style: text.titleMedium?.copyWith(color: Colors.white),
+                ),
                 const SizedBox(height: Spacing.xs),
                 Text(
                   snapshot.score.summary,
-                  style: text.bodySmall?.copyWith(color: colors.textSecondary),
+                  style: text.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.78),
+                    height: 1.45,
+                  ),
                 ),
                 // A streak is worth showing when it is one. "0-day clean
                 // streak" is not an encouragement, it is a zero with a label.
                 if (streak > 0) ...[
                   const SizedBox(height: Spacing.md),
-                  _Streak(days: streak),
+                  _Streak(days: streak, onDark: true),
                 ],
               ],
             ),
@@ -379,19 +417,24 @@ class _DisciplineHero extends StatelessWidget {
 
 class _Streak extends StatelessWidget {
   final int days;
-  const _Streak({required this.days});
+  final bool onDark;
+  const _Streak({required this.days, this.onDark = false});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tint = onDark ? colors.accentBright : colors.accent;
     return Row(
       children: [
         Icon(Icons.local_fire_department_rounded,
-            size: Sizes.iconSm, color: colors.accent),
+            size: Sizes.iconSm, color: tint),
         const SizedBox(width: Spacing.xs),
         Text(
           '$days-day clean streak',
-          style: Theme.of(context).textTheme.labelMedium,
+          style: Theme.of(context)
+              .textTheme
+              .labelMedium
+              ?.copyWith(color: onDark ? Colors.white : null),
         ),
       ],
     );

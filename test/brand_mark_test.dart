@@ -15,77 +15,73 @@ import 'package:flutter_test/flutter_test.dart';
 /// a `CustomPainter.paint` body, and reaching them any other way would mean
 /// building the widget — which is exactly what the generator avoids.
 void main() {
-  /// Every `<name> * size.<axis>` or `* markSide` factor, keyed by what it
-  /// multiplies.
-  Map<String, String> factorsIn(String source, List<String> names) {
-    final found = <String, String>{};
-    for (final name in names) {
-      final capitalised = '${name[0].toUpperCase()}${name.substring(1)}';
-      // Matches either the painter's "final left = size.width * 0.24;" or the
-      // generator's "const kLeft = 0.24;".
-      // Not a raw string: it interpolates the name being looked for, so the
-      // backslashes are doubled.
-      final match = RegExp(
-        '(?:final\\s+$name\\s*=\\s*[\\w.]+\\s*\\*\\s*'
-        '|k$capitalised\\s*=\\s*)'
-        '(\\d+\\.?\\d*)',
-      ).firstMatch(source);
-      if (match != null) found[name] = match.group(1)!;
-    }
-    return found;
+  final painter =
+      File('lib/features/splash/splash_screen.dart').readAsStringSync();
+  final generator =
+      File('tool/generate_launcher_icons.dart').readAsStringSync();
+
+  /// Reads `<name> = <number>` out of a source file.
+  ///
+  /// Both sides now declare the geometry as named constants — `MarkGeometry`
+  /// in the widget, `k…` in the generator — so this compares declarations
+  /// rather than digging factors out of a paint body. When the shape changes,
+  /// exactly two numbers have to change together, and this says so by name.
+  String constantIn(String source, String name, String where) {
+    final match = RegExp('\\b$name\\s*=\\s*(\\d+\\.?\\d*)').firstMatch(source);
+    expect(match, isNotNull, reason: 'no `$name` found in $where');
+    return match!.group(1)!;
   }
 
-  test('the icon generator uses the same proportions as the app mark', () {
-    final painter =
-        File('lib/features/splash/splash_screen.dart').readAsStringSync();
-    final generator =
-        File('tool/generate_launcher_icons.dart').readAsStringSync();
+  test('the icon generator draws the same letter as the app mark', () {
+    // Painter name -> generator name. Every proportion of the P is here; miss
+    // one and the icon is a subtly different letter from the logo.
+    const pairs = <String, String>{
+      'stroke': 'kStrokeWidth',
+      'stemX': 'kStemX',
+      'stemTop': 'kStemTop',
+      'stemBottom': 'kStemBottom',
+      'bowlBottom': 'kBowlBottom',
+      'bowlX': 'kBowlX',
+      'plateRadius': 'kPlateRadius',
+    };
 
-    const names = ['left', 'right', 'bottom', 'top'];
-    final fromPainter = factorsIn(painter, names);
-    final fromGenerator = factorsIn(generator, names);
-
-    expect(fromPainter.length, names.length,
-        reason:
-            'could not read the mark proportions out of splash_screen.dart');
-    expect(fromGenerator, fromPainter,
-        reason:
-            'tool/generate_launcher_icons.dart has drifted from _MarkPainter');
+    pairs.forEach((inWidget, inGenerator) {
+      expect(
+        constantIn(generator, inGenerator, 'the generator'),
+        constantIn(painter, inWidget, 'MarkGeometry'),
+        reason: '$inGenerator has drifted from MarkGeometry.$inWidget',
+      );
+    });
   });
 
-  test('stroke, plate radius and dot scale agree', () {
-    final painter =
-        File('lib/features/splash/splash_screen.dart').readAsStringSync();
-    final generator =
-        File('tool/generate_launcher_icons.dart').readAsStringSync();
+  test('the bowl is a half circle in both, or the arc radius disagrees', () {
+    // The widget draws a real arc and the generator approximates one with a
+    // polyline. Both derive the radius the same way — (bowlBottom - stemTop)/2
+    // — so the only way they can disagree is if one of them stops doing that.
+    expect(painter.contains('(bowlBottom - stemTop) / 2'), isTrue,
+        reason: 'MarkGeometry no longer derives the arc radius from the bowl');
+    expect(generator.contains('(kBowlBottom - kStemTop) / 2'), isTrue,
+        reason: 'the generator no longer derives the arc radius from the bowl');
+  });
 
-    String painterValue(RegExp pattern, String label) {
-      final match = pattern.firstMatch(painter);
-      expect(match, isNotNull, reason: 'no $label found in the painter');
-      return match!.group(1)!;
-    }
+  test('the letter fits inside its plate', () {
+    // Half the stroke sticks out past the path on every side. If that reaches
+    // the edge the icon is clipped by the launcher's mask, which only shows up
+    // on a device.
+    double value(String name) =>
+        double.parse(constantIn(painter, name, 'MarkGeometry'));
 
-    String generatorValue(String constant) {
-      final match =
-          RegExp('$constant\\s*=\\s*(\\d+\\.?\\d*)').firstMatch(generator);
-      expect(match, isNotNull, reason: 'no $constant in the generator');
-      return match!.group(1)!;
-    }
+    final half = value('stroke') / 2;
+    final radius = (value('bowlBottom') - value('stemTop')) / 2;
 
-    expect(
-      generatorValue('kStrokeWidth'),
-      painterValue(
-          RegExp(r'final stroke = size\.width \* (\d+\.?\d*)'), 'stroke'),
-    );
-    expect(
-      generatorValue('kPlateRadius'),
-      painterValue(
-          RegExp(r'final radius = size\.width \* (\d+\.?\d*)'), 'plate radius'),
-    );
-    expect(
-      generatorValue('kDotScale'),
-      painterValue(RegExp(r'stroke \* (\d+\.?\d*)'), 'dot scale'),
-    );
+    expect(value('stemX') - half, greaterThan(0.12),
+        reason: 'the stem is too close to the left edge');
+    expect(value('bowlX') + radius + half, lessThan(0.88),
+        reason: 'the bowl is too close to the right edge');
+    expect(value('stemTop') - half, greaterThan(0.12),
+        reason: 'the letter is too close to the top edge');
+    expect(value('stemBottom') + half, lessThan(0.88),
+        reason: 'the letter is too close to the bottom edge');
   });
 
   test('every icon the stores ask for exists', () {

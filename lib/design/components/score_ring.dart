@@ -31,6 +31,13 @@ class ScoreRing extends StatelessWidget {
   /// the cap is visible rather than implied.
   final bool wasCapped;
 
+  /// Drawn on a dark ground: the track lifts, the numerals go light.
+  ///
+  /// The ring is the one element in the product people will recognise it by,
+  /// so it has to survive being the centrepiece of a deep panel as well as a
+  /// small figure on a white card.
+  final bool onDark;
+
   const ScoreRing({
     super.key,
     required this.score,
@@ -38,6 +45,7 @@ class ScoreRing extends StatelessWidget {
     this.size = Sizes.scoreRing,
     this.caption,
     this.wasCapped = false,
+    this.onDark = false,
   });
 
   @override
@@ -54,6 +62,34 @@ class ScoreRing extends StatelessWidget {
       final value when value >= Dec.fromInt(40) => colors.warning,
       _ => colors.violation,
     };
+    // The arc runs from the band's colour into a lit version of it, so the
+    // stroke has a direction and a highlight instead of being one flat band.
+    //
+    // On a dark panel the band colour has to be lifted at *both* ends. Left as
+    // it is, the deep green the arc starts in is darker than the ground it is
+    // drawn on, so the first third of the sweep disappears and the ring reads
+    // as a soft smudge rather than a gauge with a level.
+    //
+    // Lifted in HSL rather than blended toward white: mixing white in raises
+    // luminance by draining colour, which turned a green band into pale sage.
+    // Raising lightness and holding saturation keeps the hue that carries the
+    // meaning — a warning band still reads amber, a breach still reads red.
+    Color lift(double lightness, double saturation) {
+      final hsl = HSLColor.fromColor(arcColor);
+      return hsl
+          .withLightness((hsl.lightness + lightness).clamp(0.0, 1.0))
+          .withSaturation((hsl.saturation + saturation).clamp(0.0, 1.0))
+          .toColor();
+    }
+
+    final arcBase = onDark ? lift(0.18, 0.10) : arcColor;
+    final arcLit =
+        onDark ? lift(0.36, 0.06) : Color.lerp(arcColor, Colors.white, 0.32)!;
+    final numberColor = onDark ? Colors.white : colors.textPrimary;
+    final captionColor =
+        onDark ? Colors.white.withValues(alpha: 0.72) : colors.textTertiary;
+    final trackColor =
+        onDark ? Colors.white.withValues(alpha: 0.16) : colors.surfaceSunken;
 
     final label = score == null ? 'No score' : Fmt.score(score);
 
@@ -73,28 +109,35 @@ class ScoreRing extends StatelessWidget {
           builder: (context, value, _) => CustomPaint(
             painter: _RingPainter(
               fraction: value,
-              arcColor: arcColor,
-              trackColor: colors.surfaceSunken,
+              arcColor: arcBase,
+              arcLit: arcLit,
+              trackColor: trackColor,
               strokeWidth: size * 0.085,
               isIndeterminate: score == null,
+              glow: onDark,
             ),
             child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    label,
+                    // While the arc is sweeping, the number climbs with it —
+                    // reading 88 the instant the ring starts moving makes the
+                    // sweep look like decoration. The exact label takes over
+                    // the moment it settles, so precision is never lost to
+                    // the animation.
+                    (value - (target ?? 0)).abs() < 0.002
+                        ? label
+                        : (value * 100).round().toString(),
                     style: score == null
-                        ? PrayanType.figure(colors.textTertiary,
-                            size: size * 0.13)
-                        : PrayanType.metric(colors.textPrimary,
-                            size: size * 0.3),
+                        ? PrayanType.figure(captionColor, size: size * 0.13)
+                        : PrayanType.metric(numberColor, size: size * 0.3),
                   ),
                   if (caption != null) ...[
                     const SizedBox(height: Spacing.xxs),
                     Text(
                       caption!.toUpperCase(),
-                      style: PrayanType.metricLabel(colors.textTertiary),
+                      style: PrayanType.metricLabel(captionColor),
                     ),
                   ],
                 ],
@@ -119,16 +162,23 @@ class ScoreRing extends StatelessWidget {
 class _RingPainter extends CustomPainter {
   final double fraction;
   final Color arcColor;
+  final Color arcLit;
   final Color trackColor;
   final double strokeWidth;
   final bool isIndeterminate;
 
+  /// Lays a blurred copy of the arc under itself. Only on dark grounds, where
+  /// there is something for light to fall on.
+  final bool glow;
+
   _RingPainter({
     required this.fraction,
     required this.arcColor,
+    required this.arcLit,
     required this.trackColor,
     required this.strokeWidth,
     required this.isIndeterminate,
+    this.glow = false,
   });
 
   @override
@@ -158,18 +208,47 @@ class _RingPainter extends CustomPainter {
 
     if (isIndeterminate || fraction <= 0) return;
 
-    final arc = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..color = arcColor;
+    final circle = Rect.fromCircle(center: center, radius: radius);
+    final swept = sweepAngle * fraction.clamp(0.0, 1.0);
+
+    // The gradient is swept around the same circle the arc follows, so the
+    // highlight travels with the stroke instead of sitting at a fixed corner.
+    final shader = SweepGradient(
+      startAngle: startAngle,
+      endAngle: startAngle + sweepAngle,
+      colors: [arcColor, arcLit],
+      transform: const GradientRotation(startAngle),
+    ).createShader(circle);
+
+    if (glow) {
+      canvas.drawArc(
+        circle,
+        startAngle,
+        swept,
+        false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          // Kept close to the stroke's own width and lightly blurred. Wider or
+          // softer and the halo spills across the empty part of the track,
+          // which is the one thing the ring has to keep legible: how far round
+          // it has actually gone.
+          ..strokeWidth = strokeWidth * 1.15
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, strokeWidth * 0.5)
+          ..color = arcLit.withValues(alpha: 0.35),
+      );
+    }
 
     canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
+      circle,
       startAngle,
-      sweepAngle * fraction.clamp(0.0, 1.0),
+      swept,
       false,
-      arc,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round
+        ..shader = shader,
     );
   }
 
@@ -177,7 +256,9 @@ class _RingPainter extends CustomPainter {
   bool shouldRepaint(_RingPainter old) =>
       old.fraction != fraction ||
       old.arcColor != arcColor ||
+      old.arcLit != arcLit ||
       old.trackColor != trackColor ||
+      old.glow != glow ||
       old.isIndeterminate != isIndeterminate;
 }
 

@@ -293,7 +293,8 @@ class OnboardingWelcomeStep extends StatelessWidget {
 
     return OnboardingStepScaffold(
       centred: true,
-      header: const Center(child: PrayanMark(size: 88)),
+      header: const Center(
+          child: PrayanMark(size: 88, animate: true, filled: true)),
       title: 'Welcome to Prayan',
       subtitle:
           'A journal for traders who want to improve the process, not chase '

@@ -150,7 +150,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Center(child: PrayanMark(size: 64)),
+                    const Center(
+                        child:
+                            PrayanMark(size: 72, animate: true, filled: true)),
                     const SizedBox(height: Spacing.xl),
                     Text(
                       _isRegistering ? 'Create your journal' : 'Welcome back',

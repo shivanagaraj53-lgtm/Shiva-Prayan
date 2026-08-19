@@ -35,6 +35,13 @@ class PrayanCard extends StatelessWidget {
   /// How far off the page this card sits. See [CardLift].
   final CardLift lift;
 
+  /// Paints the card as a gradient panel instead of a flat surface.
+  ///
+  /// For the one card on a screen that is the argument — the discipline score.
+  /// Everything else stays flat on purpose: a product where every card is a
+  /// gradient is a product where none of them mean anything.
+  final Gradient? gradient;
+
   const PrayanCard({
     super.key,
     required this.child,
@@ -43,6 +50,7 @@ class PrayanCard extends StatelessWidget {
     this.emphasised = false,
     this.borderColor,
     this.lift = CardLift.resting,
+    this.gradient,
   });
 
   @override
@@ -62,10 +70,14 @@ class PrayanCard extends StatelessWidget {
                     .withValues(alpha: lift == CardLift.flat ? 1 : 0.6));
 
     final decoration = BoxDecoration(
-      color: emphasised ? colors.accentMuted : colors.surface,
+      color: gradient != null
+          ? null
+          : (emphasised ? colors.accentMuted : colors.surface),
+      gradient: gradient,
       borderRadius: Radii.card,
       border: Border.all(
-        color: resting,
+        color:
+            gradient != null ? Colors.white.withValues(alpha: 0.10) : resting,
         width: emphasised || borderColor != null ? 1.2 : 1,
       ),
       boxShadow: switch (lift) {
@@ -90,6 +102,70 @@ class PrayanCard extends StatelessWidget {
           child: content,
         ),
       ),
+    );
+  }
+}
+
+/// Fades and lifts its child in, once, on first build.
+///
+/// The difference between a screen that appears and a screen that arrives.
+/// Deliberately small — 12 pixels and a fifth of a second — because the point
+/// is that the eye lands on the top of the page and follows it down, not that
+/// anyone notices an animation. [index] staggers a list so sections settle in
+/// reading order.
+///
+/// Honours reduced motion by rendering the finished state on the first frame,
+/// which is what someone who asked for stillness should get.
+class Entrance extends StatefulWidget {
+  final Widget child;
+  final int index;
+
+  const Entrance({super.key, required this.child, this.index = 0});
+
+  @override
+  State<Entrance> createState() => _EntranceState();
+}
+
+class _EntranceState extends State<Entrance>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 260),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.delayed(
+      Duration(milliseconds: 45 * widget.index),
+      () {
+        if (mounted) _controller.forward();
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      return widget.child;
+    }
+    final curved = CurvedAnimation(parent: _controller, curve: Motion.enter);
+    return AnimatedBuilder(
+      animation: curved,
+      builder: (context, child) => Opacity(
+        opacity: curved.value,
+        child: Transform.translate(
+          offset: Offset(0, 12 * (1 - curved.value)),
+          child: child,
+        ),
+      ),
+      child: widget.child,
     );
   }
 }

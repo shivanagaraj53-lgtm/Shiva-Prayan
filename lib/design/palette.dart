@@ -48,6 +48,19 @@ class PrayanColors extends ThemeExtension<PrayanColors> {
   /// A muted wash of [accent] for backgrounds behind accent content.
   final Color accentMuted;
 
+  /// The lit end of the brand gradient.
+  ///
+  /// A single flat accent is what makes a careful interface look like a
+  /// template: nothing catches light, so nothing looks made. This is the
+  /// second stop — brighter and a touch cooler — used for the logo stroke, the
+  /// score ring and the one card on a screen that carries the argument. Never
+  /// on its own, and never behind text, because on light themes it is
+  /// deliberately too luminous to read against.
+  final Color accentBright;
+
+  /// The deep end, for gradient grounds that text sits on top of.
+  final Color accentDeep;
+
   // --- Result semantics -------------------------------------------------
   /// Positive result. A desaturated teal-green rather than a trading-terminal
   /// green: the brief explicitly rejects flashing P&L and gambling aesthetics.
@@ -100,6 +113,8 @@ class PrayanColors extends ThemeExtension<PrayanColors> {
     required this.onAccent,
     required this.accent,
     required this.accentMuted,
+    required this.accentBright,
+    required this.accentDeep,
     required this.positive,
     required this.positiveMuted,
     required this.negative,
@@ -143,6 +158,8 @@ class PrayanColors extends ThemeExtension<PrayanColors> {
     Color? onAccent,
     Color? accent,
     Color? accentMuted,
+    Color? accentBright,
+    Color? accentDeep,
     Color? positive,
     Color? positiveMuted,
     Color? negative,
@@ -170,6 +187,8 @@ class PrayanColors extends ThemeExtension<PrayanColors> {
         onAccent: onAccent ?? this.onAccent,
         accent: accent ?? this.accent,
         accentMuted: accentMuted ?? this.accentMuted,
+        accentBright: accentBright ?? this.accentBright,
+        accentDeep: accentDeep ?? this.accentDeep,
         positive: positive ?? this.positive,
         positiveMuted: positiveMuted ?? this.positiveMuted,
         negative: negative ?? this.negative,
@@ -202,6 +221,8 @@ class PrayanColors extends ThemeExtension<PrayanColors> {
       onAccent: mix(onAccent, other.onAccent),
       accent: mix(accent, other.accent),
       accentMuted: mix(accentMuted, other.accentMuted),
+      accentBright: mix(accentBright, other.accentBright),
+      accentDeep: mix(accentDeep, other.accentDeep),
       positive: mix(positive, other.positive),
       positiveMuted: mix(positiveMuted, other.positiveMuted),
       negative: mix(negative, other.negative),
@@ -277,6 +298,8 @@ class Palettes {
     onAccent: Color(0xFFFFFFFF),
     accent: Color(0xFF1F6F5C),
     accentMuted: Color(0xFFE4F0EC),
+    accentBright: Color(0xFF35C79A),
+    accentDeep: Color(0xFF0C3B31),
     positive: Color(0xFF1B6B54),
     positiveMuted: Color(0xFFE2F0EB),
     negative: Color(0xFF9C4221),
@@ -305,6 +328,8 @@ class Palettes {
     onAccent: Color(0xFF06120E),
     accent: Color(0xFF4FBFA0),
     accentMuted: Color(0xFF16302A),
+    accentBright: Color(0xFF5FE3B8),
+    accentDeep: Color(0xFF0A2A24),
     positive: Color(0xFF4FBFA0),
     positiveMuted: Color(0xFF14302A),
     negative: Color(0xFFD98A66),
@@ -333,6 +358,8 @@ class Palettes {
     onAccent: Color(0xFFFFFDF8),
     accent: Color(0xFF2F6D51),
     accentMuted: Color(0xFFE6EFE7),
+    accentBright: Color(0xFF3E9E74),
+    accentDeep: Color(0xFF173A2C),
     positive: Color(0xFF2F6D51),
     positiveMuted: Color(0xFFE6EFE7),
     negative: Color(0xFF97431F),
@@ -361,6 +388,8 @@ class Palettes {
     onAccent: Color(0xFF0C0C0D),
     accent: Color(0xFF6FC8B0),
     accentMuted: Color(0xFF1B2E2A),
+    accentBright: Color(0xFF7BE0C0),
+    accentDeep: Color(0xFF11312A),
     positive: Color(0xFF6FC8B0),
     positiveMuted: Color(0xFF1B2E2A),
     negative: Color(0xFFE09A79),

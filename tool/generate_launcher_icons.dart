@@ -14,20 +14,38 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-// A launcher icon cannot follow the device's light/dark setting, so it commits
-// to the Daylight palette's accent roles.
-const int accentArgb = 0xFF1E6B54;
-const int plateArgb = 0xFFE3F0EA;
+// A launcher icon cannot follow the device's light/dark setting, so it commits.
+//
+// It commits to a deep ground with a lit letter, which is the opposite of the
+// in-app mark on a light theme — deliberately. An icon is seen at 48px on a
+// wallpaper it does not control, next to thirty others; a pale plate with a
+// darker mark on it disappears into a light home screen and reads as a
+// placeholder. Depth and contrast is what makes it findable and what makes it
+// look made.
+const int plateDeepArgb = 0xFF0B3A30;
+const int plateLitArgb = 0xFF175E4C;
+const int accentArgb = 0xFF4FD1A5;
+const int accentBrightArgb = 0xFFA9F2DB;
 const int transparentArgb = 0x00000000;
 
-/// Proportions copied from `_MarkPainter`. All are fractions of the side.
+/// Kept for the adaptive-icon background layer, which Android fills flat.
+const int plateArgb = plateDeepArgb;
+
+/// Proportions copied from `MarkGeometry`. All are fractions of the side.
 const double kPlateRadius = 0.26;
-const double kStrokeWidth = 0.085;
-const double kLeft = 0.24;
-const double kRight = 0.76;
-const double kBottom = 0.72;
-const double kTop = 0.30;
-const double kDotScale = 0.85;
+const double kStrokeWidth = 0.115;
+const double kStemX = 0.335;
+const double kStemTop = 0.265;
+const double kStemBottom = 0.755;
+const double kBowlBottom = 0.525;
+const double kBowlX = 0.545;
+
+/// Segments the bowl's semicircle is approximated by.
+///
+/// The rasteriser measures distance to line segments, so the arc has to become
+/// a polyline. At 32 the largest gap between chord and true arc is under a
+/// third of a pixel on a 1024px icon — below what anti-aliasing resolves.
+const int kArcSegments = 32;
 
 /// Anti-aliasing quality: 4 means 16 samples per pixel.
 const int kSupersample = 4;
@@ -83,24 +101,34 @@ bool insideRoundedSquare(double x, double y, double side, double radius) {
   return dx * dx + dy * dy <= radius * radius;
 }
 
-/// The three rising steps, as segments in a box of `side`.
-List<List<double>> stepSegments(double side) {
-  final left = kLeft * side;
-  final right = kRight * side;
-  final bottom = kBottom * side;
-  final top = kTop * side;
-  final stepWidth = (right - left) / 3;
-  final stepHeight = (bottom - top) / 3;
+/// The letter P as segments in a box of `side`.
+///
+/// Mirrors `MarkGeometry.path`: up the stem, across the top, round the bowl,
+/// back to the stem.
+List<List<double>> markSegments(double side) {
+  final stemX = kStemX * side;
+  final stemTop = kStemTop * side;
+  final stemBottom = kStemBottom * side;
+  final bowlBottom = kBowlBottom * side;
+  final bowlX = kBowlX * side;
+  final radius = (kBowlBottom - kStemTop) / 2 * side;
+  final centreY = (stemTop + bowlBottom) / 2;
 
   final points = <List<double>>[
-    [left, bottom],
+    [stemX, stemBottom],
+    [stemX, stemTop],
+    [bowlX, stemTop],
   ];
-  for (var i = 0; i < 3; i++) {
-    final x = left + stepWidth * i;
-    final y = bottom - stepHeight * i;
-    points.add([x + stepWidth, y]);
-    points.add([x + stepWidth, y - stepHeight]);
+
+  // The arc runs from straight up (-pi/2) clockwise to straight down (pi/2),
+  // bulging to the right of `bowlX`.
+  for (var i = 1; i <= kArcSegments; i++) {
+    final angle = -math.pi / 2 + math.pi * (i / kArcSegments);
+    points.add(
+        [bowlX + radius * math.cos(angle), centreY + radius * math.sin(angle)]);
   }
+
+  points.add([stemX, bowlBottom]);
 
   return [
     for (var i = 0; i < points.length - 1; i++)
@@ -123,16 +151,15 @@ Uint8List renderIcon(
 }) {
   final pixels = Uint8List(size * size * 4);
   final plateColor = Rgba.fromArgb(plate);
-  final markColor = Rgba.fromArgb(accentArgb);
+  final plateLit = Rgba.fromArgb(plate == plateDeepArgb ? plateLitArgb : plate);
+  final markDeep = Rgba.fromArgb(accentArgb);
+  final markLit = Rgba.fromArgb(accentBrightArgb);
 
   final markSide = size * inset;
   final origin = (size - markSide) / 2;
 
-  final segments = stepSegments(markSide);
+  final segments = markSegments(markSide);
   final halfStroke = kStrokeWidth * markSide / 2;
-  final dotRadius = kStrokeWidth * markSide * kDotScale;
-  final dotX = kLeft * markSide;
-  final dotY = kBottom * markSide;
   final plateRadius = square ? 0.0 : kPlateRadius * size;
 
   const step = 1.0 / kSupersample;
@@ -142,6 +169,7 @@ Uint8List renderIcon(
     for (var px = 0; px < size; px++) {
       var plateHits = 0;
       var markHits = 0;
+      var markMix = 0.0;
 
       for (var sy = 0; sy < kSupersample; sy++) {
         for (var sx = 0; sx < kSupersample; sx++) {
@@ -154,24 +182,28 @@ Uint8List renderIcon(
 
           final mx = x - origin;
           final my = y - origin;
-          final ddx = mx - dotX;
-          final ddy = my - dotY;
-          var onMark = ddx * ddx + ddy * ddy <= dotRadius * dotRadius;
-          if (!onMark) {
-            for (final s in segments) {
-              if (_distanceToSegment(mx, my, s[0], s[1], s[2], s[3]) <=
-                  halfStroke) {
-                onMark = true;
-                break;
-              }
+          var onMark = false;
+          for (final s in segments) {
+            if (_distanceToSegment(mx, my, s[0], s[1], s[2], s[3]) <=
+                halfStroke) {
+              onMark = true;
+              break;
             }
           }
-          if (onMark) markHits++;
+          if (onMark) {
+            markHits++;
+            // Same gradient the widget paints: bottom-left to top-right.
+            markMix += ((mx / markSide) + (1 - my / markSide)) / 2;
+          }
         }
       }
 
       final plateAlpha = plateColor.a * plateHits / samplesPerPixel;
-      final markAlpha = markColor.a * markHits / samplesPerPixel;
+      final markAlpha = markDeep.a * markHits / samplesPerPixel;
+
+      // Where this pixel sits along the gradient, averaged over its samples.
+      final t = markHits == 0 ? 0.0 : (markMix / markHits).clamp(0.0, 1.0);
+      int lerp(int a, int b) => (a + (b - a) * t).round();
 
       // Mark over plate, both over transparency.
       final outAlpha = markAlpha + plateAlpha * (1 - markAlpha / 255);
@@ -182,10 +214,18 @@ Uint8List renderIcon(
         return ((top + bottom) / outAlpha).round().clamp(0, 255);
       }
 
+      // The plate lights from the top-left, opposite the letter's gradient,
+      // so the two read as one lit object rather than two flat shapes.
+      final pt = ((px / size) + (1 - py / size)) / 2;
+      int plateLerp(int a, int b) => (a + (b - a) * (1 - pt)).round();
+
       final i = (py * size + px) * 4;
-      pixels[i] = channel(markColor.r, plateColor.r);
-      pixels[i + 1] = channel(markColor.g, plateColor.g);
-      pixels[i + 2] = channel(markColor.b, plateColor.b);
+      pixels[i] = channel(
+          lerp(markDeep.r, markLit.r), plateLerp(plateColor.r, plateLit.r));
+      pixels[i + 1] = channel(
+          lerp(markDeep.g, markLit.g), plateLerp(plateColor.g, plateLit.g));
+      pixels[i + 2] = channel(
+          lerp(markDeep.b, markLit.b), plateLerp(plateColor.b, plateLit.b));
       pixels[i + 3] = outAlpha.round().clamp(0, 255);
     }
   }
@@ -252,13 +292,19 @@ Uint8List encodePng(Uint8List rgba, int size, {bool opaque = false}) {
   ];
 
   return Uint8List.fromList([
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+    0x89,
+    0x50,
+    0x4E,
+    0x47,
+    0x0D,
+    0x0A,
+    0x1A,
+    0x0A,
     ..._chunk('IHDR', ihdr),
     ..._chunk('IDAT', ZLibCodec(level: 9).encode(raw)),
     ..._chunk('IEND', const <int>[]),
   ]);
 }
-
 
 /// The Play feature graphic: 1024x500, no text.
 ///
@@ -270,8 +316,8 @@ Uint8List renderFeatureGraphic(int width, int height) {
   final plate = Rgba.fromArgb(plateArgb);
   final mark = Rgba.fromArgb(accentArgb);
 
-  // The mark's drawn content occupies only the middle ~45% of its own box, so
-  // the box is set larger than the banner to make the steps read at a glance.
+  // The letter occupies only the middle of its own box, so the box is set
+  // larger than the banner to make the P read at a glance.
   // It is placed left of centre: Play draws the app name and icon over this
   // graphic in several placements, and the right side has to stay clear.
   final side = height * 1.07;
@@ -279,11 +325,8 @@ Uint8List renderFeatureGraphic(int width, int height) {
   // Put the visible centre of the mark at 30% of the width.
   final originX = width * 0.30 - side / 2;
 
-  final segments = stepSegments(side);
+  final segments = markSegments(side);
   final halfStroke = kStrokeWidth * side / 2;
-  final dotRadius = kStrokeWidth * side * kDotScale;
-  final dotX = kLeft * side;
-  final dotY = kBottom * side;
 
   const step = 1.0 / kSupersample;
   const samplesPerPixel = kSupersample * kSupersample;
@@ -299,16 +342,12 @@ Uint8List renderFeatureGraphic(int width, int height) {
         for (var sx = 0; sx < kSupersample; sx++) {
           final x = px + (sx + 0.5) * step - originX;
           final y = py + (sy + 0.5) * step - originY;
-          final ddx = x - dotX;
-          final ddy = y - dotY;
-          var on = ddx * ddx + ddy * ddy <= dotRadius * dotRadius;
-          if (!on) {
-            for (final s in segments) {
-              if (_distanceToSegment(x, y, s[0], s[1], s[2], s[3]) <=
-                  halfStroke) {
-                on = true;
-                break;
-              }
+          var on = false;
+          for (final s in segments) {
+            if (_distanceToSegment(x, y, s[0], s[1], s[2], s[3]) <=
+                halfStroke) {
+              on = true;
+              break;
             }
           }
           if (on) markHits++;
@@ -339,7 +378,10 @@ Uint8List encodePng2(Uint8List rgba, int width, int height,
     raw.add(0);
     for (var x = 0; x < width; x++) {
       final i = (y * width + x) * 4;
-      raw..add(rgba[i])..add(rgba[i + 1])..add(rgba[i + 2]);
+      raw
+        ..add(rgba[i])
+        ..add(rgba[i + 1])
+        ..add(rgba[i + 2]);
       if (!opaque) raw.add(rgba[i + 3]);
     }
   }
@@ -348,10 +390,19 @@ Uint8List encodePng2(Uint8List rgba, int width, int height,
     ..._be32(height),
     8,
     opaque ? 2 : 6,
-    0, 0, 0,
+    0,
+    0,
+    0,
   ];
   return Uint8List.fromList([
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+    0x89,
+    0x50,
+    0x4E,
+    0x47,
+    0x0D,
+    0x0A,
+    0x1A,
+    0x0A,
     ..._chunk('IHDR', ihdr),
     ..._chunk('IDAT', ZLibCodec(level: 9).encode(raw)),
     ..._chunk('IEND', const <int>[]),
@@ -432,8 +483,8 @@ void main() {
     'store/play/icon-512.png',
     encodePng(renderIcon(512, plate: plateArgb, square: true), 512),
   );
-  write('store/play/feature-graphic-1024x500.png', encodePng2(
-    renderFeatureGraphic(1024, 500), 1024, 500, opaque: true));
+  write('store/play/feature-graphic-1024x500.png',
+      encodePng2(renderFeatureGraphic(1024, 500), 1024, 500, opaque: true));
 
   stdout.writeln('Web:');
   for (final entry in <String, int>{
