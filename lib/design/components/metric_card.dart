@@ -109,6 +109,17 @@ class LimitMeter extends StatelessWidget {
   final String limitLabel;
   final IconData? icon;
 
+  /// Half-width, for meters shown side by side.
+  ///
+  /// Two of these stacked full-width spent four hundred vertical pixels
+  /// saying "0 of 3" and "0R of 2R" — most of a phone screen, above the fold,
+  /// to deliver two numbers nobody needed at that size.
+  final bool dense;
+
+  /// Announced to a screen reader in place of [label] when the visible label
+  /// has been shortened to fit. Keeps the spoken version a full sentence.
+  final String? semanticLabel;
+
   const LimitMeter({
     super.key,
     required this.label,
@@ -116,6 +127,8 @@ class LimitMeter extends StatelessWidget {
     required this.usedLabel,
     required this.limitLabel,
     this.icon,
+    this.dense = false,
+    this.semanticLabel,
   });
 
   @override
@@ -131,6 +144,10 @@ class LimitMeter extends StatelessWidget {
 
     return PrayanCard(
       borderColor: exceeded ? colors.violation : null,
+      padding: dense
+          ? const EdgeInsets.symmetric(
+              horizontal: Spacing.md, vertical: Spacing.md)
+          : const EdgeInsets.all(Spacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -159,7 +176,8 @@ class LimitMeter extends StatelessWidget {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Text(usedLabel,
-                  style: PrayanType.metric(colors.textPrimary, size: 22)),
+                  style: PrayanType.metric(colors.textPrimary,
+                      size: dense ? 20 : 22)),
               const SizedBox(width: Spacing.xs),
               Text(
                 'of $limitLabel',
@@ -167,9 +185,9 @@ class LimitMeter extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: Spacing.md),
+          SizedBox(height: dense ? Spacing.sm : Spacing.md),
           Semantics(
-            label: '$label: $usedLabel of $limitLabel used'
+            label: '${semanticLabel ?? label}: $usedLabel of $limitLabel used'
                 '${exceeded ? ', over the limit' : ''}',
             excludeSemantics: true,
             child: ClipRRect(
@@ -187,6 +205,39 @@ class LimitMeter extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Two limit meters shown side by side.
+///
+/// The day's guardrails are read together and in one glance. Stacked
+/// full-width they cost four hundred vertical pixels to say "0 of 3" and "0R
+/// of 2R", which pushed everything that matters below the fold.
+///
+/// A component rather than three lines inside the dashboard, because the
+/// layout has a trap in it: `CrossAxisAlignment.stretch` asks children to fill
+/// the row's height, and inside a sliver that height is unbounded. Written
+/// inline it threw at runtime and took every section below it off the screen —
+/// silently, in a release build. Here it can be pumped in exactly that context
+/// by a test.
+class LimitMeterPair extends StatelessWidget {
+  final List<LimitMeter> meters;
+  const LimitMeterPair({super.key, required this.meters});
+
+  @override
+  Widget build(BuildContext context) {
+    if (meters.isEmpty) return const SizedBox.shrink();
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < meters.length; i++) ...[
+            if (i > 0) const SizedBox(width: Spacing.md),
+            Expanded(child: meters[i]),
+          ],
         ],
       ),
     );

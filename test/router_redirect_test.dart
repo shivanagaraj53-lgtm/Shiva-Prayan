@@ -43,8 +43,8 @@ void main() {
 
   group('signed in, onboarding unfinished', () {
     test('everything funnels into onboarding', () {
-      expect(at(Routes.dashboard, onboardingComplete: false),
-          Routes.onboarding);
+      expect(
+          at(Routes.dashboard, onboardingComplete: false), Routes.onboarding);
       expect(at(Routes.signIn, onboardingComplete: false), Routes.onboarding);
     });
 

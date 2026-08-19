@@ -130,7 +130,7 @@ class CoachingStrip extends StatelessWidget {
                 const SizedBox(height: Spacing.xxs),
                 Text(
                   insight.body,
-                  maxLines: 2,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: text.bodySmall?.copyWith(color: colors.textSecondary),
                 ),

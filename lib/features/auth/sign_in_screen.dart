@@ -258,7 +258,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                 'until you create one — nothing is stored on '
                                 'a server.'
                             : _error!,
-                        actionLabel: _offerToCreate ? 'Create this account' : null,
+                        actionLabel:
+                            _offerToCreate ? 'Create this account' : null,
                         onRetry: _offerToCreate ? _switchToCreating : null,
                       ),
                     ],

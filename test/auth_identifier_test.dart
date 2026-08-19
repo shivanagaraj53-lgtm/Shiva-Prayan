@@ -44,8 +44,7 @@ class _FakeAuth implements AuthRepository {
       };
 
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      throw UnimplementedError();
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
 Widget wrap(AuthRepository auth) => ProviderScope(
@@ -79,7 +78,8 @@ void main() {
 
     test('still treats an email address as an email address', () async {
       final auth = await freshAuth();
-      final user = await auth.registerWithEmail('Shiva@Prayan.app', 'a-password');
+      final user =
+          await auth.registerWithEmail('Shiva@Prayan.app', 'a-password');
       expect(user.email, 'shiva@prayan.app');
       expect(user.username, isNull);
       expect(user.identifier, 'shiva@prayan.app');

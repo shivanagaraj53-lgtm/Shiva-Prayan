@@ -349,8 +349,8 @@ final activeDaySnapshotProvider = Provider<AsyncValue<DaySnapshot>>(
 final lastActiveDayBeforeProvider =
     Provider.family<String?, String>((ref, dayKey) {
   final yesterday = _shiftDays(dayKey, -1);
-  final trades =
-      ref.watch(tradesInRangeProvider(DayRange(_shiftDays(dayKey, -21), yesterday)));
+  final trades = ref.watch(
+      tradesInRangeProvider(DayRange(_shiftDays(dayKey, -21), yesterday)));
   final keys = trades.value?.map((t) => t.tradingDayKey);
   if (keys == null || keys.isEmpty) return null;
   // Day keys are ISO dates, so the lexical maximum is the chronological one.

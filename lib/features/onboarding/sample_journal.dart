@@ -252,8 +252,8 @@ class SampleJournal {
       final date = TradingDay.parseKey(key);
       if (date == null) break;
 
-      final isWeekend = date.weekday == DateTime.saturday ||
-          date.weekday == DateTime.sunday;
+      final isWeekend =
+          date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
       if (!isWeekend) {
         final (dayStart, _) = TradingDay.utcRangeFor(key, config);
         final candidate = dayStart.add(_sessionOpen);

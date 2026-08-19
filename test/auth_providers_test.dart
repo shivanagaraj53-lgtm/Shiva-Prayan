@@ -74,7 +74,8 @@ Widget wrap(AuthRepository auth) => ProviderScope(
 void main() {
   testWidgets('email-only backend offers no third-party buttons',
       (tester) async {
-    await tester.pumpWidget(wrap(_FakeAuth(const {AuthProvider.emailPassword})));
+    await tester
+        .pumpWidget(wrap(_FakeAuth(const {AuthProvider.emailPassword})));
     await tester.pumpAndSettle();
 
     expect(find.text('Continue with Google'), findsNothing);
@@ -109,8 +110,7 @@ void main() {
     expect(find.text('Continue with Apple'), findsOneWidget);
   });
 
-  testWidgets('the shipping local backend declares email only',
-      (tester) async {
+  testWidgets('the shipping local backend declares email only', (tester) async {
     // The build that goes to the stores today runs on device-local storage,
     // which can verify a password and nothing else.
     SharedPreferences.setMockInitialValues(<String, Object>{});

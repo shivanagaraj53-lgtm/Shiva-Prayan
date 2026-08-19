@@ -78,6 +78,15 @@ class PrayanColors extends ThemeExtension<PrayanColors> {
   /// Overlay behind modal sheets.
   final Color scrim;
 
+  /// The colour cast by raised surfaces.
+  ///
+  /// Light themes get a cool near-black at low opacity: on paper, depth is
+  /// what tells a reader which card matters, and a hairline border cannot say
+  /// it. Dark themes get something close to transparent, because a shadow on a
+  /// dark ground is invisible — there, separation comes from the border, which
+  /// is why both exist rather than one replacing the other.
+  final Color shadow;
+
   const PrayanColors({
     required this.canvas,
     required this.surface,
@@ -103,6 +112,7 @@ class PrayanColors extends ThemeExtension<PrayanColors> {
     required this.violation,
     required this.violationMuted,
     required this.scrim,
+    required this.shadow,
   });
 
   /// Colour for a signed result. Returns [neutral] at exactly zero rather than
@@ -145,6 +155,7 @@ class PrayanColors extends ThemeExtension<PrayanColors> {
     Color? violation,
     Color? violationMuted,
     Color? scrim,
+    Color? shadow,
   }) =>
       PrayanColors(
         canvas: canvas ?? this.canvas,
@@ -171,6 +182,7 @@ class PrayanColors extends ThemeExtension<PrayanColors> {
         violation: violation ?? this.violation,
         violationMuted: violationMuted ?? this.violationMuted,
         scrim: scrim ?? this.scrim,
+        shadow: shadow ?? this.shadow,
       );
 
   @override
@@ -202,6 +214,7 @@ class PrayanColors extends ThemeExtension<PrayanColors> {
       violation: mix(violation, other.violation),
       violationMuted: mix(violationMuted, other.violationMuted),
       scrim: mix(scrim, other.scrim),
+      shadow: mix(shadow, other.shadow),
     );
   }
 }
@@ -276,6 +289,7 @@ class Palettes {
     violation: Color(0xFF9B2C2C),
     violationMuted: Color(0xFFF9E5E5),
     scrim: Color(0x66000000),
+    shadow: Color(0xFF0B1F3A),
   );
 
   static const midnight = PrayanColors(
@@ -303,6 +317,7 @@ class Palettes {
     violation: Color(0xFFE0736B),
     violationMuted: Color(0xFF3A1F1F),
     scrim: Color(0x99000000),
+    shadow: Color(0xFF000000),
   );
 
   static const parchment = PrayanColors(
@@ -330,6 +345,7 @@ class Palettes {
     violation: Color(0xFF97302E),
     violationMuted: Color(0xFFF7E3E1),
     scrim: Color(0x59000000),
+    shadow: Color(0xFF3A2E1C),
   );
 
   static const graphite = PrayanColors(
@@ -357,6 +373,7 @@ class Palettes {
     violation: Color(0xFFE88A82),
     violationMuted: Color(0xFF3A2320),
     scrim: Color(0x99000000),
+    shadow: Color(0xFF000000),
   );
 }
 

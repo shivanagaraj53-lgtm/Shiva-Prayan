@@ -56,13 +56,18 @@ class DashboardScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // The date leads and the greeting supports it.
+                            // A greeting set larger than everything under it
+                            // makes "Good evening" the most important thing on
+                            // a screen about today's trading, and costs the
+                            // score a hundred pixels of the fold.
                             Text(
-                              _greeting(profile?.displayName),
-                              style: text.headlineLarge,
+                              Fmt.dayKey(dayKey, long: true),
+                              style: text.titleLarge,
                             ),
                             const SizedBox(height: Spacing.xxs),
                             Text(
-                              Fmt.dayKey(dayKey, long: true),
+                              _greeting(profile?.displayName),
                               style: text.bodySmall
                                   ?.copyWith(color: colors.textSecondary),
                             ),
@@ -142,51 +147,7 @@ class _DashboardBody extends ConsumerWidget {
       sliver: SliverList.list(
         children: [
           // 1. How disciplined was I today?
-          PrayanCard(
-            onTap: () => context.push(Routes.discipline),
-            child: Row(
-              children: [
-                ScoreRing(
-                  score: snapshot.score.hasScore ? snapshot.score.value : null,
-                  caption: 'Today',
-                  wasCapped: snapshot.score.wasCappedByMajorViolation,
-                ),
-                const SizedBox(width: Spacing.lg),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Discipline',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: Spacing.xs),
-                      Text(
-                        snapshot.score.summary,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: colors.textSecondary),
-                      ),
-                      const SizedBox(height: Spacing.md),
-                      Row(
-                        children: [
-                          Icon(Icons.local_fire_department_outlined,
-                              size: Sizes.iconSm, color: colors.accent),
-                          const SizedBox(width: Spacing.xs),
-                          Text(
-                            '${snapshot.history.currentCleanStreak}-day clean '
-                            'streak',
-                            style: Theme.of(context).textTheme.labelMedium,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _DisciplineHero(snapshot: snapshot),
           const SizedBox(height: Spacing.md),
 
           // 2. Am I inside my limits?
@@ -205,75 +166,85 @@ class _DashboardBody extends ConsumerWidget {
           ],
 
           // 4. How did I perform today?
-          SectionHeader(
-            title: 'Today',
-            action: TextButton(
-              onPressed: () =>
-                  context.push(Routes.dailyReview(snapshot.dayKey)),
-              child: const Text('Daily review'),
+          //
+          // Only once there is a "how". On an empty day this block was three
+          // more ways of saying nothing has happened — ₹0.00, an em dash and
+          // "No closed trades yet" — stacked under a card that had already
+          // said it. The day's guardrails and one clear next step is the whole
+          // of what an empty morning needs.
+          if (snapshot.trades.isNotEmpty) ...[
+            SectionHeader(
+              title: 'Today',
+              action: TextButton(
+                onPressed: () =>
+                    context.push(Routes.dailyReview(snapshot.dayKey)),
+                child: const Text('Daily review'),
+              ),
             ),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: MetricCard(
-                  label: 'Net P&L',
-                  value: Fmt.money(snapshot.netPnl, currency,
-                      showSign: true, compact: true),
-                  valueColor: snapshot.hasTrades
-                      ? colors.forSign(snapshot.netPnl.signum)
-                      : null,
-                  support: snapshot.hasTrades
-                      ? Fmt.count(snapshot.tradeCount, 'trade')
-                      : 'No trades yet',
-                ),
-              ),
-              const SizedBox(width: Spacing.md),
-              Expanded(
-                child: MetricCard(
-                  label: 'R multiple',
-                  value: snapshot.performance.rSampleCount == 0
-                      ? Fmt.emptyValue
-                      : Fmt.r(snapshot.totalR),
-                  valueColor: snapshot.performance.rSampleCount == 0
-                      ? null
-                      : colors.forSign(snapshot.totalR.signum),
-                  support: snapshot.performance.rSampleCount == 0
-                      ? 'Needs a stop to measure'
-                      : 'Across the day',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: Spacing.md),
-          PrayanCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
               children: [
-                Text(
-                  'RESULT SPLIT',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: colors.textTertiary,
-                      ),
+                Expanded(
+                  child: MetricCard(
+                    label: 'Net P&L',
+                    value: Fmt.money(snapshot.netPnl, currency,
+                        showSign: true, compact: true),
+                    valueColor: snapshot.hasTrades
+                        ? colors.forSign(snapshot.netPnl.signum)
+                        : null,
+                    support: snapshot.hasTrades
+                        ? Fmt.count(snapshot.tradeCount, 'trade')
+                        : 'No trades yet',
+                  ),
                 ),
-                const SizedBox(height: Spacing.md),
-                OutcomeSplitBar(
-                  wins: snapshot.performance.winCount,
-                  losses: snapshot.performance.lossCount,
-                  breakevens: snapshot.performance.breakevenCount,
+                const SizedBox(width: Spacing.md),
+                Expanded(
+                  child: MetricCard(
+                    label: 'R multiple',
+                    value: snapshot.performance.rSampleCount == 0
+                        ? Fmt.emptyValue
+                        : Fmt.r(snapshot.totalR),
+                    valueColor: snapshot.performance.rSampleCount == 0
+                        ? null
+                        : colors.forSign(snapshot.totalR.signum),
+                    support: snapshot.performance.rSampleCount == 0
+                        ? 'Needs a stop to measure'
+                        : 'Across the day',
+                  ),
                 ),
               ],
             ),
-          ),
-
-          const SizedBox(height: Spacing.section),
+            const SizedBox(height: Spacing.md),
+            PrayanCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'RESULT SPLIT',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: colors.textTertiary,
+                        ),
+                  ),
+                  const SizedBox(height: Spacing.md),
+                  OutcomeSplitBar(
+                    wins: snapshot.performance.winCount,
+                    losses: snapshot.performance.lossCount,
+                    breakevens: snapshot.performance.breakevenCount,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: Spacing.section),
+          ],
 
           // 5. What did I actually do?
           SectionHeader(
-            title: 'Today\'s trades',
+            title: snapshot.trades.isEmpty ? 'Today' : 'Today\'s trades',
             action: TextButton(
-              onPressed: () => context.go(Routes.journal),
-              child: const Text('All trades'),
+              onPressed: () => snapshot.trades.isEmpty
+                  ? context.push(Routes.dailyReview(snapshot.dayKey))
+                  : context.go(Routes.journal),
+              child:
+                  Text(snapshot.trades.isEmpty ? 'Daily review' : 'All trades'),
             ),
           ),
           if (snapshot.trades.isEmpty)
@@ -306,6 +277,127 @@ class _DashboardBody extends ConsumerWidget {
   }
 }
 
+/// The one card on this screen that leads.
+///
+/// It used to show a green 100 on a day with no trades — a perfect score for
+/// having done nothing, presented as the first thing anyone sees. Every part
+/// of that is wrong: the number is arithmetic on an empty set, the ring reads
+/// as an achievement, and a streak counter sitting at "0-day" beside it turns
+/// the first morning into a scoreboard the user is already losing on.
+///
+/// So it says what is true. With nothing logged, the day is *open*, and what
+/// matters is the plan, not a score. Once there is something to measure, the
+/// score is the hero and gets the lift.
+class _DisciplineHero extends StatelessWidget {
+  final DaySnapshot snapshot;
+  const _DisciplineHero({required this.snapshot});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final text = Theme.of(context).textTheme;
+    final streak = snapshot.history.currentCleanStreak;
+
+    // Not `!score.hasScore`: with no trades the day-scoped rules all pass, so
+    // the engine happily reports 100 — a perfect score for an empty day. What
+    // makes the score meaningful is that something was measured.
+    if (snapshot.trades.isEmpty) {
+      return PrayanCard(
+        lift: CardLift.lifted,
+        child: Row(
+          children: [
+            Container(
+              width: Sizes.scoreRingCompact,
+              height: Sizes.scoreRingCompact,
+              decoration: BoxDecoration(
+                color: colors.accentMuted,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.play_arrow_rounded,
+                  size: 34, color: colors.accent),
+            ),
+            const SizedBox(width: Spacing.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Today is open', style: text.titleMedium),
+                  const SizedBox(height: Spacing.xs),
+                  Text(
+                    'Nothing logged yet. Your score appears once there is a '
+                    'trade to measure it against.',
+                    style:
+                        text.bodySmall?.copyWith(color: colors.textSecondary),
+                  ),
+                  if (streak > 0) ...[
+                    const SizedBox(height: Spacing.md),
+                    _Streak(days: streak),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return PrayanCard(
+      lift: CardLift.lifted,
+      onTap: () => context.push(Routes.discipline),
+      child: Row(
+        children: [
+          ScoreRing(
+            score: snapshot.score.hasScore ? snapshot.score.value : null,
+            caption: 'Today',
+            wasCapped: snapshot.score.wasCappedByMajorViolation,
+          ),
+          const SizedBox(width: Spacing.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Discipline', style: text.titleMedium),
+                const SizedBox(height: Spacing.xs),
+                Text(
+                  snapshot.score.summary,
+                  style: text.bodySmall?.copyWith(color: colors.textSecondary),
+                ),
+                // A streak is worth showing when it is one. "0-day clean
+                // streak" is not an encouragement, it is a zero with a label.
+                if (streak > 0) ...[
+                  const SizedBox(height: Spacing.md),
+                  _Streak(days: streak),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Streak extends StatelessWidget {
+  final int days;
+  const _Streak({required this.days});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Row(
+      children: [
+        Icon(Icons.local_fire_department_rounded,
+            size: Sizes.iconSm, color: colors.accent),
+        const SizedBox(width: Spacing.xs),
+        Text(
+          '$days-day clean streak',
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
+      ],
+    );
+  }
+}
+
 /// The dashboard when today is empty.
 ///
 /// "Nothing logged today" on its own is a dead end, and it is the first screen
@@ -327,7 +419,7 @@ class _NothingToday extends ConsumerWidget {
     final lastActive = ref.watch(lastActiveDayBeforeProvider(dayKey));
 
     if (lastActive == null) {
-      return PrayanCard(
+      return const PrayanCard(
         padding: EdgeInsets.zero,
         child: EmptyState(
           compact: true,
@@ -335,8 +427,10 @@ class _NothingToday extends ConsumerWidget {
           title: 'Nothing logged today',
           message: 'A day with no valid setup is a good day. If you did '
               'trade, log it while the reasoning is fresh.',
-          actionLabel: 'Log a trade',
-          onAction: () => context.push(Routes.logTrade),
+          // No button. "Log trade" is already the floating action on every
+          // screen, and the two rendered on top of each other — two identical
+          // green buttons, one obscuring the other. A screen gets one primary
+          // action, and this one already had it.
         ),
       );
     }
@@ -350,8 +444,7 @@ class _NothingToday extends ConsumerWidget {
         title: 'Nothing logged today',
         message: 'A day with no valid setup is a good day. Your last session '
             'was ${Fmt.dayKey(lastActive, long: true)}.',
-        actionLabel:
-            'Open ${date == null ? lastActive : Fmt.dayShort(date)}',
+        actionLabel: 'Open ${date == null ? lastActive : Fmt.dayShort(date)}',
         onAction: () => context.push(Routes.dailyReview(lastActive)),
       ),
     );
@@ -384,29 +477,37 @@ class _LimitsSection extends ConsumerWidget {
 
     final lossR = snapshot.totalR.isNegative ? snapshot.totalR.abs : Dec.zero;
 
+    // The day's two guardrails belong beside each other: they are read
+    // together, they are one glance, and stacking them full-width pushed
+    // everything that matters below the fold.
+    final meters = <LimitMeter>[
+      if (maxDailyLossR != null && !maxDailyLossR.isZero)
+        LimitMeter(
+          label: 'Loss limit',
+          semanticLabel: 'Daily loss limit',
+          icon: Icons.shield_outlined,
+          dense: true,
+          fraction: lossR.divide(maxDailyLossR, scale: 4).toDouble(),
+          usedLabel: '${lossR.roundTo(2).normalized}R',
+          limitLabel: '${maxDailyLossR.normalized}R',
+        ),
+      if (maxTrades != null && !maxTrades.isZero)
+        LimitMeter(
+          label: 'Trades',
+          semanticLabel: 'Trades today',
+          icon: Icons.numbers_rounded,
+          dense: true,
+          fraction: Dec.fromInt(snapshot.tradeCount)
+              .divide(maxTrades, scale: 4)
+              .toDouble(),
+          usedLabel: '${snapshot.tradeCount}',
+          limitLabel: maxTrades.normalized.toString(),
+        ),
+    ];
+
     return Column(
       children: [
-        if (maxDailyLossR != null && !maxDailyLossR.isZero)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Spacing.md),
-            child: LimitMeter(
-              label: 'Daily loss limit',
-              icon: Icons.shield_outlined,
-              fraction: lossR.divide(maxDailyLossR, scale: 4).toDouble(),
-              usedLabel: '${lossR.roundTo(2).normalized}R',
-              limitLabel: '${maxDailyLossR.normalized}R',
-            ),
-          ),
-        if (maxTrades != null && !maxTrades.isZero)
-          LimitMeter(
-            label: 'Trades today',
-            icon: Icons.numbers_rounded,
-            fraction: Dec.fromInt(snapshot.tradeCount)
-                .divide(maxTrades, scale: 4)
-                .toDouble(),
-            usedLabel: '${snapshot.tradeCount}',
-            limitLabel: maxTrades.normalized.toString(),
-          ),
+        LimitMeterPair(meters: meters),
         if (snapshot.reachedDailyStop) ...[
           const SizedBox(height: Spacing.md),
           PrayanCard(

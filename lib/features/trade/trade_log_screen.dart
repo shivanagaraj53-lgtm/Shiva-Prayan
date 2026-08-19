@@ -89,8 +89,12 @@ class _TradeLogScreenState extends ConsumerState<TradeLogScreen> {
         strategiesById: {for (final s in strategies) s.id: s},
       ),
     );
-    final liveViolations =
-        evaluations.where((e) => e.isViolation).toList(growable: false);
+    // Nothing is judged until the form is a trade. See `isJudgeable`: an empty
+    // form breaks nearly every rule, and opening a screen to four red
+    // violations you caused by tapping a button is not feedback.
+    final liveViolations = form.isJudgeable
+        ? evaluations.where((e) => e.isViolation).toList(growable: false)
+        : const <RuleEvaluation>[];
 
     return Scaffold(
       appBar: AppBar(
@@ -160,6 +164,7 @@ class _TradeLogScreenState extends ConsumerState<TradeLogScreen> {
                 Expanded(
                   child: _NumberInput(
                     label: 'Entry',
+                    hint: 'Price paid',
                     value: form.entryPrice,
                     onChanged: (v) => _update(form.copyWith(entryPrice: v)),
                   ),
@@ -168,8 +173,8 @@ class _TradeLogScreenState extends ConsumerState<TradeLogScreen> {
                 Expanded(
                   child: _NumberInput(
                     label: 'Stop',
+                    hint: 'Invalidation',
                     value: form.stopLoss,
-                    helper: form.stopDec == null ? 'Needed for R' : null,
                     onChanged: (v) => _update(form.copyWith(stopLoss: v)),
                   ),
                 ),
@@ -181,6 +186,7 @@ class _TradeLogScreenState extends ConsumerState<TradeLogScreen> {
                 Expanded(
                   child: _NumberInput(
                     label: 'Target',
+                    hint: 'Optional',
                     value: form.target,
                     onChanged: (v) => _update(form.copyWith(target: v)),
                   ),
@@ -189,6 +195,7 @@ class _TradeLogScreenState extends ConsumerState<TradeLogScreen> {
                 Expanded(
                   child: _NumberInput(
                     label: 'Quantity',
+                    hint: 'Shares / lots',
                     value: form.quantity,
                     onChanged: (v) => _update(form.copyWith(quantity: v)),
                   ),
@@ -202,6 +209,7 @@ class _TradeLogScreenState extends ConsumerState<TradeLogScreen> {
                   Expanded(
                     child: _NumberInput(
                       label: 'Exit',
+                      hint: 'Price closed',
                       value: form.exitPrice,
                       onChanged: (v) => _update(form.copyWith(exitPrice: v)),
                     ),
@@ -210,6 +218,7 @@ class _TradeLogScreenState extends ConsumerState<TradeLogScreen> {
                   Expanded(
                     child: _NumberInput(
                       label: 'Fees',
+                      hint: 'Brokerage + taxes',
                       value: form.fees,
                       onChanged: (v) => _update(form.copyWith(fees: v)),
                     ),
@@ -228,26 +237,19 @@ class _TradeLogScreenState extends ConsumerState<TradeLogScreen> {
             ],
 
             // Live rule feedback — the point of the product, shown *before*
-            // the trade is committed rather than as a post-mortem.
+            // the trade is committed rather than as a post-mortem. Silent
+            // until there is a trade to measure, and headed by what it
+            // actually is: a warning that something is still open reads very
+            // differently from a rule already broken.
             if (liveViolations.isNotEmpty) ...[
               const SizedBox(height: Spacing.md),
-              PrayanCard(
-                borderColor: liveViolations.any((v) => v.isMajorViolation)
-                    ? colors.violation
-                    : colors.warning,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Against your rules',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: Spacing.xs),
-                    for (final violation in liveViolations)
-                      RuleStatusTile(evaluation: violation, dense: true),
-                  ],
-                ),
-              ),
+              _LiveRuleCheck(violations: liveViolations),
+            ] else if (form.isJudgeable && rules.isNotEmpty) ...[
+              const SizedBox(height: Spacing.md),
+              _AllClear(
+                  followed: evaluations
+                      .where((e) => e.status == RuleStatus.passed)
+                      .length),
             ],
 
             const SizedBox(height: Spacing.section),
@@ -393,6 +395,92 @@ class _TradeLogScreenState extends ConsumerState<TradeLogScreen> {
   }
 }
 
+/// What the rules say about the trade as it stands.
+///
+/// Headed by severity rather than by a fixed accusation. "Against your rules"
+/// is true of a trade that breaks a risk limit; it is not true of one that
+/// simply has not had a stop typed in yet, and using the same words for both
+/// is how a coaching tool turns into a nag people learn to ignore.
+class _LiveRuleCheck extends StatelessWidget {
+  final List<RuleEvaluation> violations;
+  const _LiveRuleCheck({required this.violations});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final text = Theme.of(context).textTheme;
+    final major = violations.any((v) => v.isMajorViolation);
+    final tone = major ? colors.violation : colors.warning;
+
+    return PrayanCard(
+      borderColor: tone,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                major
+                    ? Icons.error_outline_rounded
+                    : Icons.info_outline_rounded,
+                size: Sizes.iconMd,
+                color: tone,
+              ),
+              const SizedBox(width: Spacing.sm),
+              Expanded(
+                child: Text(
+                  major ? 'Against your rules' : 'Before you commit',
+                  style: text.titleMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Spacing.xs),
+          for (final violation in violations)
+            RuleStatusTile(evaluation: violation, dense: true),
+        ],
+      ),
+    );
+  }
+}
+
+/// The other half of the same feedback: a trade that is inside the rules
+/// should be told so. A tool that only ever speaks up to complain teaches
+/// people to dread opening it.
+class _AllClear extends StatelessWidget {
+  final int followed;
+  const _AllClear({required this.followed});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final text = Theme.of(context).textTheme;
+
+    return PrayanCard(
+      lift: CardLift.flat,
+      padding: const EdgeInsets.symmetric(
+        horizontal: Spacing.lg,
+        vertical: Spacing.md,
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.verified_outlined,
+              size: Sizes.iconMd, color: colors.compliant),
+          const SizedBox(width: Spacing.sm),
+          Expanded(
+            child: Text(
+              followed == 0
+                  ? 'Nothing broken so far.'
+                  : 'Inside your rules — $followed checked.',
+              style: text.bodyMedium?.copyWith(color: colors.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _StatusPicker extends ConsumerWidget {
   final TradeFormState form;
   const _StatusPicker({required this.form});
@@ -420,6 +508,9 @@ class _NumberInput extends StatelessWidget {
   final String label;
   final String value;
   final String? helper;
+
+  /// An example of the shape of the answer, shown until there is a real one.
+  final String? hint;
   final ValueChanged<String> onChanged;
 
   const _NumberInput({
@@ -427,13 +518,22 @@ class _NumberInput extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.helper,
+    this.hint,
   });
 
   @override
   Widget build(BuildContext context) => TextFormField(
         initialValue: value,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: InputDecoration(labelText: label, helperText: helper),
+        decoration: InputDecoration(
+          labelText: label,
+          // Six numeric boxes whose labels vanish the moment you type in them
+          // is a form you have to remember rather than read. The label stays
+          // put and an example sits inside until it is replaced.
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          hintText: hint,
+          helperText: helper,
+        ),
         onChanged: onChanged,
       );
 }
@@ -448,6 +548,35 @@ class _RiskPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final text = Theme.of(context).textTheme;
+
+    // Three em-dashes in a box is not a readout, it is furniture. Until one of
+    // these numbers exists, the card says what would make it exist instead.
+    final hasAnything = metrics.plannedRisk != null ||
+        metrics.plannedRewardRisk != null ||
+        metrics.netPnl != null;
+    if (!hasAnything) {
+      return PrayanCard(
+        lift: CardLift.flat,
+        padding: const EdgeInsets.symmetric(
+          horizontal: Spacing.lg,
+          vertical: Spacing.md,
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calculate_outlined,
+                size: Sizes.iconMd, color: colors.textTertiary),
+            const SizedBox(width: Spacing.sm),
+            Expanded(
+              child: Text(
+                'Entry, stop and quantity give you risk and R:R here.',
+                style: text.bodyMedium?.copyWith(color: colors.textSecondary),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return PrayanCard(
       child: Row(

@@ -216,12 +216,22 @@ class OnboardingStepScaffold extends StatelessWidget {
   final Widget child;
   final Widget? header;
 
+  /// Sits the page in the middle of the screen rather than at the top.
+  ///
+  /// Only for steps that are genuinely short. Pinned to the top, a heading and
+  /// two lines of copy left most of a phone screen empty and the whole flow
+  /// read as unfinished — twelve times over. Steps with a list of choices stay
+  /// top-aligned, because those grow and centring a scrolling list is worse
+  /// than the void ever was.
+  final bool centred;
+
   const OnboardingStepScaffold({
     super.key,
     required this.title,
     required this.child,
     this.subtitle,
     this.header,
+    this.centred = false,
   });
 
   @override
@@ -229,30 +239,44 @@ class OnboardingStepScaffold extends StatelessWidget {
     final colors = context.colors;
     final text = Theme.of(context).textTheme;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Spacing.page,
-        vertical: Spacing.lg,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (header != null) ...[header!, const SizedBox(height: Spacing.xl)],
-          Text(title, style: text.headlineLarge),
-          if (subtitle != null) ...[
-            const SizedBox(height: Spacing.sm),
-            Text(
-              subtitle!,
-              style: text.bodyMedium?.copyWith(
-                color: colors.textSecondary,
-                height: 1.55,
-              ),
+    final column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment:
+          centred ? MainAxisAlignment.center : MainAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (header != null) ...[header!, const SizedBox(height: Spacing.xl)],
+        Text(title, style: text.headlineLarge),
+        if (subtitle != null) ...[
+          const SizedBox(height: Spacing.sm),
+          Text(
+            subtitle!,
+            style: text.bodyMedium?.copyWith(
+              color: colors.textSecondary,
+              height: 1.55,
             ),
-          ],
-          const SizedBox(height: Spacing.xl),
-          child,
-          const SizedBox(height: Spacing.xxl),
+          ),
         ],
+        const SizedBox(height: Spacing.xl),
+        child,
+        const SizedBox(height: Spacing.xxl),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Spacing.page,
+          vertical: Spacing.lg,
+        ),
+        child: ConstrainedBox(
+          // Fill the viewport so a centred page has something to centre in,
+          // while anything taller still scrolls normally.
+          constraints: BoxConstraints(
+            minHeight: constraints.maxHeight - Spacing.lg * 2,
+          ),
+          child: column,
+        ),
       ),
     );
   }
@@ -263,15 +287,51 @@ class OnboardingWelcomeStep extends StatelessWidget {
   const OnboardingWelcomeStep({super.key});
 
   @override
-  Widget build(BuildContext context) => const OnboardingStepScaffold(
-        header: Center(child: PrayanMark(size: 88)),
-        title: 'Welcome to Prayan',
-        subtitle:
-            'A journal for traders who want to improve the process, not chase '
-            'the score. Setup takes about two minutes, and you can change any '
-            'of it later.',
-        child: SizedBox.shrink(),
-      );
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final text = Theme.of(context).textTheme;
+
+    return OnboardingStepScaffold(
+      centred: true,
+      header: const Center(child: PrayanMark(size: 88)),
+      title: 'Welcome to Prayan',
+      subtitle:
+          'A journal for traders who want to improve the process, not chase '
+          'the score. Setup takes about two minutes, and you can change any '
+          'of it later.',
+      // The first screen used to be a heading, two lines and a thousand pixels
+      // of nothing. Three lines about what actually happens costs one card and
+      // tells someone what they are setting up.
+      child: Column(
+        children: [
+          for (final step in const [
+            (Icons.edit_note_rounded, 'Log the trade you took'),
+            (Icons.rule_rounded, 'See which of your rules it followed'),
+            (Icons.workspace_premium_outlined, 'Get a score for the process'),
+          ])
+            Padding(
+              padding: const EdgeInsets.only(bottom: Spacing.md),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: colors.accentMuted,
+                      borderRadius: Radii.field,
+                    ),
+                    child:
+                        Icon(step.$1, size: Sizes.iconMd, color: colors.accent),
+                  ),
+                  const SizedBox(width: Spacing.md),
+                  Expanded(child: Text(step.$2, style: text.bodyMedium)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Step 2 — the product promise, stated plainly including what it is not.

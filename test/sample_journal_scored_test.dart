@@ -98,7 +98,8 @@ void main() {
       strategiesById: {for (final s in strategies) s.id: s},
     );
     return DisciplineScorer.score(
-      RulesEngine.evaluateDay(trades: saved, rules: rules, context: context).all,
+      RulesEngine.evaluateDay(trades: saved, rules: rules, context: context)
+          .all,
     );
   }
 
@@ -132,11 +133,11 @@ void main() {
     // the bell. Saturday and Sunday are here because the walk back has to
     // clear a weekend as well.
     final clocks = <DateTime>[
-      DateTime.utc(2026, 3, 16, 0),   // Mon 05:30 IST, before the open
-      DateTime.utc(2026, 3, 16, 2),   // Mon 07:30 IST, before the open
+      DateTime.utc(2026, 3, 16, 0), // Mon 05:30 IST, before the open
+      DateTime.utc(2026, 3, 16, 2), // Mon 07:30 IST, before the open
       DateTime.utc(2026, 3, 16, 3, 44), // Mon, one minute before the bell
-      DateTime.utc(2026, 3, 14, 12),  // Saturday
-      DateTime.utc(2026, 3, 15, 12),  // Sunday
+      DateTime.utc(2026, 3, 14, 12), // Saturday
+      DateTime.utc(2026, 3, 15, 12), // Sunday
       DateTime.utc(2026, 8, 18, 21, 30), // 03:00 IST the next day
     ];
 

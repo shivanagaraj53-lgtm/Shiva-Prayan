@@ -164,6 +164,15 @@ class TradeFormState {
   bool get canSave =>
       symbol.trim().isNotEmpty && entryDec != null && quantityDec != null;
 
+  /// Whether this is yet enough of a trade to be measured against the rules.
+  ///
+  /// A blank form breaks almost every rule there is — no stop, no setup, no
+  /// checklist, no reasoning — and saying so before a single character is
+  /// typed is not coaching, it is a screen of red that means nothing. An
+  /// instrument and an entry price is the point at which the answer starts
+  /// depending on what the user actually did.
+  bool get isJudgeable => symbol.trim().isNotEmpty && entryDec != null;
+
   /// Builds the [Trade] this form describes.
   ///
   /// Returns the same object the calculator and rules engine will see, so the

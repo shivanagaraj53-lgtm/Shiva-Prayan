@@ -3,7 +3,23 @@ import 'package:flutter/material.dart';
 import '../palette.dart';
 import '../tokens.dart';
 
-/// The standard card. One border, one radius, no elevation.
+/// How far off the page a card sits.
+enum CardLift {
+  /// Resting on the canvas. Almost every card.
+  resting,
+
+  /// Lifted. Reserved for the one card on a screen that carries the argument —
+  /// the discipline score, a sheet. More than one lifted card per screen and
+  /// neither of them leads.
+  lifted,
+
+  /// Flat against the canvas: grouped rows, nested content, anywhere a shadow
+  /// would stack on top of another one.
+  flat,
+}
+
+/// The standard card. One radius, one border, and a shadow that says which of
+/// them matters.
 class PrayanCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -16,6 +32,9 @@ class PrayanCard extends StatelessWidget {
   /// Overrides the border colour, e.g. to mark a violated rule.
   final Color? borderColor;
 
+  /// How far off the page this card sits. See [CardLift].
+  final CardLift lift;
+
   const PrayanCard({
     super.key,
     required this.child,
@@ -23,18 +42,37 @@ class PrayanCard extends StatelessWidget {
     this.onTap,
     this.emphasised = false,
     this.borderColor,
+    this.lift = CardLift.resting,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+
+    // On a light ground the shadow does the separating, so the hairline drops
+    // to a whisper — running both at full strength is what makes a card look
+    // outlined rather than raised. On dark the border is all there is.
+    final resting = borderColor ??
+        (emphasised
+            ? colors.accent
+            : dark
+                ? colors.border
+                : colors.border
+                    .withValues(alpha: lift == CardLift.flat ? 1 : 0.6));
+
     final decoration = BoxDecoration(
       color: emphasised ? colors.accentMuted : colors.surface,
       borderRadius: Radii.card,
       border: Border.all(
-        color: borderColor ?? (emphasised ? colors.accent : colors.border),
+        color: resting,
         width: emphasised || borderColor != null ? 1.2 : 1,
       ),
+      boxShadow: switch (lift) {
+        CardLift.flat => const [],
+        CardLift.resting => Elevation.card(colors.shadow, dark: dark),
+        CardLift.lifted => Elevation.lifted(colors.shadow, dark: dark),
+      },
     );
 
     final content = Padding(padding: padding, child: child);

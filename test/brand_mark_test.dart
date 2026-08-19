@@ -36,22 +36,28 @@ void main() {
   }
 
   test('the icon generator uses the same proportions as the app mark', () {
-    final painter = File('lib/features/splash/splash_screen.dart').readAsStringSync();
-    final generator = File('tool/generate_launcher_icons.dart').readAsStringSync();
+    final painter =
+        File('lib/features/splash/splash_screen.dart').readAsStringSync();
+    final generator =
+        File('tool/generate_launcher_icons.dart').readAsStringSync();
 
     const names = ['left', 'right', 'bottom', 'top'];
     final fromPainter = factorsIn(painter, names);
     final fromGenerator = factorsIn(generator, names);
 
     expect(fromPainter.length, names.length,
-        reason: 'could not read the mark proportions out of splash_screen.dart');
+        reason:
+            'could not read the mark proportions out of splash_screen.dart');
     expect(fromGenerator, fromPainter,
-        reason: 'tool/generate_launcher_icons.dart has drifted from _MarkPainter');
+        reason:
+            'tool/generate_launcher_icons.dart has drifted from _MarkPainter');
   });
 
   test('stroke, plate radius and dot scale agree', () {
-    final painter = File('lib/features/splash/splash_screen.dart').readAsStringSync();
-    final generator = File('tool/generate_launcher_icons.dart').readAsStringSync();
+    final painter =
+        File('lib/features/splash/splash_screen.dart').readAsStringSync();
+    final generator =
+        File('tool/generate_launcher_icons.dart').readAsStringSync();
 
     String painterValue(RegExp pattern, String label) {
       final match = pattern.firstMatch(painter);
@@ -68,7 +74,8 @@ void main() {
 
     expect(
       generatorValue('kStrokeWidth'),
-      painterValue(RegExp(r'final stroke = size\.width \* (\d+\.?\d*)'), 'stroke'),
+      painterValue(
+          RegExp(r'final stroke = size\.width \* (\d+\.?\d*)'), 'stroke'),
     );
     expect(
       generatorValue('kPlateRadius'),
@@ -107,6 +114,7 @@ void main() {
     final bytes = File(
       'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png',
     ).readAsBytesSync();
-    expect(bytes[25], 2, reason: 'the 1024 icon still carries an alpha channel');
+    expect(bytes[25], 2,
+        reason: 'the 1024 icon still carries an alpha channel');
   });
 }

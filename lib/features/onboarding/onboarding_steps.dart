@@ -84,6 +84,7 @@ class OnboardingStyleStep extends _DraftStep {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => OnboardingStepScaffold(
+        centred: true,
         title: 'How long do you hold?',
         subtitle: 'Used to choose sensible defaults on the trade form.',
         child: OnboardingChoiceList<TradingStyle>(
@@ -200,6 +201,7 @@ class OnboardingEquityStep extends _DraftStep {
   Widget build(BuildContext context, WidgetRef ref) {
     final currency = draft.currency;
     return OnboardingStepScaffold(
+      centred: true,
       title: 'What is your account size?',
       subtitle: 'Optional. Prayan needs it to express risk as a percentage — '
           'without it, percentage rules are reported as "needs data" rather '
@@ -521,6 +523,7 @@ class OnboardingSampleStep extends _DraftStep {
     final text = Theme.of(context).textTheme;
 
     return OnboardingStepScaffold(
+      centred: true,
       title: 'Want a worked example first?',
       subtitle:
           'Prayan can load three sample trades — a disciplined loss, a clean '

@@ -189,7 +189,8 @@ class LocalAuthRepository implements AuthRepository {
   /// Device-local storage can verify an email and password and nothing else.
   /// Federated sign-in needs Firebase Auth, so it is not offered here.
   @override
-  Set<AuthProvider> get supportedProviders => const {AuthProvider.emailPassword};
+  Set<AuthProvider> get supportedProviders =>
+      const {AuthProvider.emailPassword};
 
   /// Nothing here sends mail, so nothing here needs an address. Demanding one
   /// would be theatre — the identifier is a key in a local store.

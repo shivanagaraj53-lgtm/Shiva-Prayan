@@ -26,7 +26,11 @@ class Spacing {
   static const double section = 28;
 
   /// Bottom padding that clears the navigation bar and the quick-log button.
-  static const double scrollBottom = 120;
+  ///
+  /// The button is 56 tall with a 16 margin above a 64 nav bar, so anything
+  /// under 136 leaves the last card sitting behind it once the list is
+  /// scrolled to the end — which is exactly where the eye lands.
+  static const double scrollBottom = 148;
 }
 
 class Radii {
@@ -48,6 +52,57 @@ class Radii {
   );
   static const BorderRadius field = BorderRadius.all(Radius.circular(md));
   static const BorderRadius chip = BorderRadius.all(Radius.circular(pill));
+}
+
+/// Elevation.
+///
+/// Depth is what tells someone which card on a screen matters, and a product
+/// where every surface sits at the same height reads as a wireframe of itself.
+/// Two levels only: things resting on the page, and the one thing lifted off
+/// it. A third would just be noise.
+class Elevation {
+  const Elevation._();
+
+  /// A card at rest. Barely there — enough to separate it from the canvas.
+  static List<BoxShadow> card(Color shadow, {bool dark = false}) => dark
+      // A shadow on a dark ground is invisible; the border carries separation
+      // there instead, so spending paint on this would be pure cost.
+      ? const []
+      : [
+          BoxShadow(
+            color: shadow.withValues(alpha: 0.05),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+          BoxShadow(
+            color: shadow.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ];
+
+  /// The one element on a screen that is lifted: the hero card, a sheet, the
+  /// floating action button.
+  static List<BoxShadow> lifted(Color shadow, {bool dark = false}) => dark
+      ? [
+          BoxShadow(
+            color: shadow.withValues(alpha: 0.45),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ]
+      : [
+          BoxShadow(
+            color: shadow.withValues(alpha: 0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+          BoxShadow(
+            color: shadow.withValues(alpha: 0.10),
+            blurRadius: 28,
+            offset: const Offset(0, 14),
+          ),
+        ];
 }
 
 /// Motion timings.
