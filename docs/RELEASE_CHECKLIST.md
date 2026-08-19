@@ -53,8 +53,15 @@ several days. Same-day publication is not achievable from this starting point.
 - [x] iOS 1024 marketing icon has **no alpha channel** (asserted in
       `test/brand_mark_test.dart`)
 - [x] Play listing icon, 512×512 — `store/play/icon-512.png`
-- [x] Screenshots: iPhone 6.9" (1320×2868), 6.5" (1290×2796), Play phone
-      (1080×1920) — 10 each, in `store/screenshots/`
+- [ ] Screenshots: iPhone 6.9" (1320×2868), 6.5" (1290×2796), Play phone
+      (1080×1920) — 10 each exist in `store/screenshots/`, **but they predate
+      the interface redesign and no longer match the app.** Regenerate before
+      submitting: `node store-shots.js` against a release web build. The
+      capture script needs one fix first — Flutter web renders text fields as
+      unlabelled `<input>`s, so the driver addresses them by position, and the
+      log form reflows as it fills, which moves them. It now verifies each
+      value landed instead of assuming, and currently fails on the symbol
+      field rather than producing a wrong screenshot
 - [x] Feature graphic (Play, 1024×500) — `store/play/feature-graphic-1024x500.png`
 - [ ] iPad screenshots, if you ship an iPad build (submit iPhone-only to skip)
 
