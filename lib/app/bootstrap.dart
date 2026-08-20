@@ -25,6 +25,12 @@ class Bootstrap {
     final auth = LocalAuthRepository(store);
     final profiles = LocalProfileRepository(store);
 
+    // A build compiled with a seeded account puts it on the device before the
+    // router asks who is signed in, so a fresh install opens into the journal
+    // rather than into a sign-up form. Does nothing on a build without the
+    // defines, which is every build that goes to a store.
+    await auth.seedConfiguredAccount();
+
     return [
       localStoreProvider.overrideWithValue(store),
       authRepositoryProvider.overrideWithValue(auth),

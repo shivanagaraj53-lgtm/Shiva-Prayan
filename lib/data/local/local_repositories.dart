@@ -78,7 +78,18 @@ class LocalAuthRepository implements AuthRepository {
   /// password in plaintext and applies scrypt server-side. This exists only so
   /// the local build does not keep a recoverable secret on disk; it is not a
   /// substitute, and `docs/FIREBASE_SETUP.md` says so.
-  String _obscure(String password, String salt) {
+  /// The stored form of a password for the seeded account.
+  ///
+  /// Public and static so `tool/seed_hash.dart` can produce the value for a
+  /// `--dart-define` without anyone having to reimplement the algorithm — a
+  /// second implementation that disagrees by one byte fails as "wrong
+  /// password" on a device, which is close to undiagnosable.
+  static String seedHashFor(String password) =>
+      _obscureWith(password, seedUserId);
+
+  String _obscure(String password, String salt) => _obscureWith(password, salt);
+
+  static String _obscureWith(String password, String salt) {
     var hash = 0x811c9dc5;
     for (final unit in utf8.encode('$salt::$password')) {
       hash ^= unit;
@@ -156,6 +167,7 @@ class LocalAuthRepository implements AuthRepository {
     );
     final user = _userFor(id, normalised);
     await _store.setString(Collections.lastIdentifierKey, normalised);
+    await _store.removeKey(Collections.signedOutKey);
     await _setSession(user);
     return user;
   }
@@ -182,6 +194,7 @@ class LocalAuthRepository implements AuthRepository {
     }
     final user = _userFor(userId, normalised);
     await _store.setString(Collections.lastIdentifierKey, normalised);
+    await _store.removeKey(Collections.signedOutKey);
     await _setSession(user);
     return user;
   }
@@ -201,6 +214,62 @@ class LocalAuthRepository implements AuthRepository {
   @override
   Future<bool> hasExistingAccount() async =>
       _store.hasKeyStartingWith(_credentialPrefix);
+
+  /// An account this build was compiled to already know about.
+  ///
+  /// Accounts here live on the device and nowhere else, which is correct for a
+  /// journal with no server and maddening for one person using it across a
+  /// phone, a browser and a fresh install: each one is a new machine with no
+  /// account on it, so each one asks them to create one again.
+  ///
+  /// A build can be given one account up front. Both values come from
+  /// `--dart-define` at build time, never from source — the repository must
+  /// never carry a credential, and this deliberately takes a *hash* rather
+  /// than a password so the plaintext is not sitting in the compiled binary
+  /// either. With neither define set, nothing happens and the build behaves
+  /// exactly as it does today, which is what ships to the stores.
+  static const seededIdentifier =
+      String.fromEnvironment('PRAYAN_SEED_IDENTIFIER');
+  static const seededHash = String.fromEnvironment('PRAYAN_SEED_HASH');
+
+  /// The user id a seeded account always gets.
+  ///
+  /// Fixed, because the hash is salted with it: a random id would make the
+  /// hash unverifiable on the next device, which is the whole point.
+  static const seedUserId = 'user_seed';
+
+  static bool get hasSeed =>
+      seededIdentifier.isNotEmpty && seededHash.isNotEmpty;
+
+  /// Writes the configured account onto this device if it is not already here.
+  ///
+  /// Returns the user when one was seeded *and* nobody is signed in, so the
+  /// caller can put them straight into it. Idempotent: a second run finds the
+  /// credential already stored and does nothing.
+  Future<AuthUser?> seedConfiguredAccount() async {
+    if (!hasSeed) return null;
+
+    final identifier = seededIdentifier.toLowerCase().trim();
+    if (_store.getString(_credentialKey(identifier)) == null) {
+      await _store.setString(
+        _credentialKey(identifier),
+        jsonEncode({'userId': seedUserId, 'hash': seededHash}),
+      );
+      await _store.setString(Collections.lastIdentifierKey, identifier);
+    }
+
+    // Someone already signed in on this device stays signed in — seeding must
+    // never yank a session out from under an account that is in use.
+    if (_current != null) return null;
+
+    // And someone who signed out meant it. Without this the sign-out button
+    // is inert on a seeded build and the sign-in screen is unreachable.
+    if (_store.getString(Collections.signedOutKey) != null) return null;
+
+    final user = _userFor(seedUserId, identifier);
+    await _setSession(user);
+    return user;
+  }
 
   @override
   Future<String?> lastUsedIdentifier() async =>
@@ -241,7 +310,10 @@ class LocalAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> signOut() => _setSession(null);
+  Future<void> signOut() async {
+    await _store.setString(Collections.signedOutKey, 'true');
+    await _setSession(null);
+  }
 
   @override
   Future<void> deleteAccount() async {

@@ -170,4 +170,12 @@ class Collections {
 
   /// The identifier last signed in with on this device. Never the password.
   static const lastIdentifierKey = 'lastIdentifier';
+
+  /// Set when someone signs out on purpose.
+  ///
+  /// A build carrying a seeded account signs into it automatically, which is
+  /// the point — but doing that after an explicit "sign out" would make the
+  /// button do nothing, and there would be no way to reach the sign-in screen
+  /// at all.
+  static const signedOutKey = 'signedOutDeliberately';
 }
