@@ -230,6 +230,29 @@ class Trade {
   bool get countsAsTaken =>
       status == TradeStatus.open || status == TradeStatus.closed;
 
+  /// Whether the reflection on this trade is recorded.
+  ///
+  /// Three things, chosen because each is a different question and none can be
+  /// answered from the numbers: why it was taken, why it was left, and whether
+  /// it would be taken again. Prices and P&L say what happened; only these say
+  /// anything about the decision, which is the part a journal exists to hold.
+  bool get isReviewed =>
+      (entryReason?.trim().isNotEmpty ?? false) &&
+      (exitReason?.trim().isNotEmpty ?? false) &&
+      wouldRepeat != null;
+
+  /// How far through the method this entry has been taken.
+  ///
+  /// Derived, never stored: a stored copy is a second source of truth that
+  /// goes stale the moment someone edits the trade it describes.
+  TradeStage get stage => switch (status) {
+        TradeStatus.cancelled => TradeStage.cancelled,
+        TradeStatus.planned => TradeStage.planned,
+        TradeStatus.open => TradeStage.entered,
+        TradeStatus.closed =>
+          isReviewed ? TradeStage.executed : TradeStage.exited,
+      };
+
   /// Fraction of the presented checklist the user actually ticked.
   /// `null` when no checklist was presented, so the scorer can mark the rule
   /// not-applicable instead of penalising a user who has none configured.

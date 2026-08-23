@@ -62,6 +62,44 @@ enum TradeDirection {
       decodeEnum(values, name, (v) => v.wireName, TradeDirection.long);
 }
 
+/// How far through the method a trade has been taken.
+///
+/// [TradeStatus] records what the position is doing; this records what the
+/// *journal entry* has become, which is a different question and the one the
+/// user is working through. A closed position with no reflection on it is a
+/// receipt, not a journal entry, and the difference is invisible if the only
+/// thing tracked is open versus closed.
+enum TradeStage {
+  /// A plan. Nothing has been entered.
+  planned('planned', 'Planned'),
+
+  /// Entered: a position exists and the plan behind it is recorded.
+  entered('entered', 'Trade entered'),
+
+  /// Exited: the position is closed and the result is known, but nothing has
+  /// been said about how it went.
+  exited('exited', 'Trade exited'),
+
+  /// Fully executed: closed, and the reasoning at both ends plus the verdict
+  /// are recorded. This is the entry that is worth reading in six months.
+  executed('executed', 'Fully executed'),
+
+  /// Planned and deliberately not taken.
+  cancelled('cancelled', 'Cancelled');
+
+  const TradeStage(this.wireName, this.label);
+  final String wireName;
+  final String label;
+
+  /// Position in the three-part method, or null for stages outside it.
+  int? get step => switch (this) {
+        TradeStage.entered => 1,
+        TradeStage.exited => 2,
+        TradeStage.executed => 3,
+        _ => null,
+      };
+}
+
 enum TradeStatus {
   /// Planned before entry — the pre-trade plan exists but no position is open.
   planned('planned', 'Planned'),

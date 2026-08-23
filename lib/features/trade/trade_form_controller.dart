@@ -18,6 +18,13 @@ class TradeFormState {
   final MarketSession session;
   final TradeStatus status;
 
+  /// Set when the user is recording a plan they have not acted on.
+  ///
+  /// The only part of status left to a choice, because it is the only part
+  /// that cannot be inferred: an empty entry price is equally "a plan" and
+  /// "not filled in yet".
+  final bool isPlanOnly;
+
   final String entryPrice;
   final String stopLoss;
   final String target;
@@ -56,6 +63,7 @@ class TradeFormState {
     this.strategyId,
     this.session = MarketSession.open,
     this.status = TradeStatus.closed,
+    this.isPlanOnly = false,
     this.entryPrice = '',
     this.stopLoss = '',
     this.target = '',
@@ -86,6 +94,7 @@ class TradeFormState {
     Object? strategyId = _unset,
     MarketSession? session,
     TradeStatus? status,
+    bool? isPlanOnly,
     String? entryPrice,
     String? stopLoss,
     String? target,
@@ -119,6 +128,7 @@ class TradeFormState {
             : strategyId as String?,
         session: session ?? this.session,
         status: status ?? this.status,
+        isPlanOnly: isPlanOnly ?? this.isPlanOnly,
         entryPrice: entryPrice ?? this.entryPrice,
         stopLoss: stopLoss ?? this.stopLoss,
         target: target ?? this.target,
@@ -164,6 +174,28 @@ class TradeFormState {
   bool get canSave =>
       symbol.trim().isNotEmpty && entryDec != null && quantityDec != null;
 
+  /// The stage this entry has reached, by what is filled in.
+  ///
+  /// Status used to be a segmented control the user set by hand, which meant
+  /// the journal could disagree with itself: a trade marked Closed with no
+  /// exit price, or an exit typed under a trade still marked Open. Derived, it
+  /// cannot.
+  TradeStatus get derivedStatus {
+    if (isPlanOnly) return TradeStatus.planned;
+    return exitDec != null ? TradeStatus.closed : TradeStatus.open;
+  }
+
+  /// How far through the method this entry has been taken, for the header that
+  /// shows the three parts. Mirrors `Trade.stage` on what the form knows.
+  TradeStage get stage {
+    if (isPlanOnly) return TradeStage.planned;
+    if (exitDec == null) return TradeStage.entered;
+    final reviewed = entryReason.trim().isNotEmpty &&
+        exitReason.trim().isNotEmpty &&
+        wouldRepeat != null;
+    return reviewed ? TradeStage.executed : TradeStage.exited;
+  }
+
   /// Whether this is yet enough of a trade to be measured against the rules.
   ///
   /// A blank form breaks almost every rule there is — no stop, no setup, no
@@ -202,7 +234,9 @@ class TradeFormState {
           timestampUtc: openedAtUtc,
           fees: feesDec,
         ),
-      if (status == TradeStatus.closed && exitDec != null && quantity != null)
+      if (derivedStatus == TradeStatus.closed &&
+          exitDec != null &&
+          quantity != null)
         TradeExecution(
           id: '${id}_exit',
           kind: ExecutionKind.exit,
@@ -220,9 +254,10 @@ class TradeFormState {
       assetClass: assetClass,
       direction: direction,
       strategyId: strategyId,
-      status: status,
+      status: derivedStatus,
       openedAtUtc: openedAtUtc,
-      closedAtUtc: status == TradeStatus.closed ? (closedAtUtc ?? now) : null,
+      closedAtUtc:
+          derivedStatus == TradeStatus.closed ? (closedAtUtc ?? now) : null,
       tradingDayKey: dayKey,
       session: session,
       plannedEntryPrice: entry,
@@ -263,6 +298,7 @@ class TradeFormState {
       strategyId: trade.strategyId,
       session: trade.session,
       status: trade.status,
+      isPlanOnly: trade.status == TradeStatus.planned,
       entryPrice: (trade.plannedEntryPrice ?? metrics.averageEntryPrice)
               ?.normalized
               .toString() ??
@@ -331,6 +367,21 @@ class TradeFormController extends StateNotifier<TradeFormState> {
   void removeTag(String tag) {
     if (!state.tags.contains(tag)) return;
     state = state.copyWith(tags: state.tags.where((t) => t != tag).toList());
+  }
+
+  /// Records a stored attachment against this trade.
+  ///
+  /// The upload happens before this is called; the form only ever holds ids.
+  void addAttachment(String id) {
+    if (state.attachmentIds.contains(id)) return;
+    state = state.copyWith(attachmentIds: [...state.attachmentIds, id]);
+  }
+
+  void removeAttachment(String id) {
+    if (!state.attachmentIds.contains(id)) return;
+    state = state.copyWith(
+      attachmentIds: state.attachmentIds.where((a) => a != id).toList(),
+    );
   }
 
   void toggleChecklistItem(String id, bool selected) {

@@ -14,6 +14,8 @@ import '../../design/palette.dart';
 import '../../design/tokens.dart';
 import '../../design/typography.dart';
 import '../../state/providers.dart';
+import 'screenshot_strip.dart';
+import 'stage_progress.dart';
 import 'trade_form_controller.dart';
 
 /// The Log Trade flow (§7).
@@ -33,7 +35,6 @@ class TradeLogScreen extends ConsumerStatefulWidget {
 }
 
 class _TradeLogScreenState extends ConsumerState<TradeLogScreen> {
-  bool _showAdvanced = false;
   bool _saving = false;
   bool _loadedExisting = false;
   String? _saveError;
@@ -123,9 +124,15 @@ class _TradeLogScreenState extends ConsumerState<TradeLogScreen> {
             Spacing.scrollBottom,
           ),
           children: [
-            // --- The essential six -------------------------------------
-            _StatusPicker(form: form),
+            // --- The method ---------------------------------------------
+            StageProgress(stage: form.stage),
             const SizedBox(height: Spacing.lg),
+            _PlanOnlyToggle(form: form, onChanged: _update),
+            const SizedBox(height: Spacing.lg),
+            const SectionHeader(
+              title: '1 · Trade entered',
+              subtitle: 'What you committed to, and why.',
+            ),
 
             Row(
               children: [
@@ -203,30 +210,6 @@ class _TradeLogScreenState extends ConsumerState<TradeLogScreen> {
                 ),
               ],
             ),
-            if (form.status == TradeStatus.closed) ...[
-              const SizedBox(height: Spacing.lg),
-              Row(
-                children: [
-                  Expanded(
-                    child: _NumberInput(
-                      label: 'Exit',
-                      hint: 'Price closed',
-                      value: form.exitPrice,
-                      onChanged: (v) => _update(form.copyWith(exitPrice: v)),
-                    ),
-                  ),
-                  const SizedBox(width: Spacing.md),
-                  Expanded(
-                    child: _NumberInput(
-                      label: 'Fees',
-                      hint: 'Brokerage + taxes',
-                      value: form.fees,
-                      onChanged: (v) => _update(form.copyWith(fees: v)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
 
             const SizedBox(height: Spacing.lg),
             _RiskPreview(metrics: metrics, currency: account.currency),
@@ -271,20 +254,67 @@ class _TradeLogScreenState extends ConsumerState<TradeLogScreen> {
 
             const SizedBox(height: Spacing.section),
 
-            // --- Everything else, folded away ---------------------------
-            _AdvancedToggle(
-              expanded: _showAdvanced,
-              onToggle: () => setState(() => _showAdvanced = !_showAdvanced),
+            // Tags and charts belong to the entry: they are what makes this
+            // trade findable and readable later, and both were previously
+            // folded away behind a toggle most people never opened.
+            const SectionHeader(
+              title: 'Tags',
+              subtitle: 'Whatever you want to find these trades by later.',
             ),
-            AnimatedCrossFade(
-              duration: Motion.duration(context, Motion.standard),
-              sizeCurve: Motion.emphasis,
-              crossFadeState: _showAdvanced
-                  ? CrossFadeState.showSecond
-                  : CrossFadeState.showFirst,
-              firstChild: const SizedBox(width: double.infinity),
-              secondChild: _AdvancedFields(form: form, onChanged: _update),
+            _TagSection(form: form),
+            const SizedBox(height: Spacing.section),
+            _AdvancedFields(form: form, onChanged: _update, part: 1),
+            const SizedBox(height: Spacing.section),
+            const SectionHeader(
+              title: 'Charts',
+              subtitle: 'The screenshot is what makes this readable in six '
+                  'months.',
             ),
+            ScreenshotStrip(
+              attachmentIds: form.attachmentIds,
+              onAdded: ref.read(tradeFormProvider.notifier).addAttachment,
+              onRemoved: ref.read(tradeFormProvider.notifier).removeAttachment,
+            ),
+
+            const SizedBox(height: Spacing.section),
+
+            // --- Part two: how it ended ---------------------------------
+            const SectionHeader(
+              title: '2 · Trade exited',
+              subtitle: 'Fill this in when you are out. Until then the trade '
+                  'stays open.',
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: _NumberInput(
+                    label: 'Exit',
+                    hint: 'Price closed',
+                    value: form.exitPrice,
+                    onChanged: (v) => _update(form.copyWith(exitPrice: v)),
+                  ),
+                ),
+                const SizedBox(width: Spacing.md),
+                Expanded(
+                  child: _NumberInput(
+                    label: 'Fees',
+                    hint: 'Brokerage + taxes',
+                    value: form.fees,
+                    onChanged: (v) => _update(form.copyWith(fees: v)),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: Spacing.section),
+
+            // --- Part three: the part that makes it worth keeping -------
+            const SectionHeader(
+              title: '3 · Fully executed',
+              subtitle: 'The reasoning at both ends and the verdict. This is '
+                  'the part worth reading back.',
+            ),
+            _AdvancedFields(form: form, onChanged: _update, part: 3),
 
             if (_saveError != null) ...[
               const SizedBox(height: Spacing.lg),
@@ -482,27 +512,45 @@ class _AllClear extends StatelessWidget {
   }
 }
 
-class _StatusPicker extends ConsumerWidget {
+/// The one part of a trade's status that cannot be inferred.
+///
+/// Everything else is derived: an exit price means the trade is closed, its
+/// absence means it is open. But an empty entry price is equally "this is a
+/// plan I have not acted on" and "I have not typed it yet", and only the user
+/// knows which. So this is the single switch left, rather than the three-way
+/// control that used to let the journal disagree with itself — a trade marked
+/// Closed with no exit, or an exit typed under one still marked Open.
+class _PlanOnlyToggle extends StatelessWidget {
   final TradeFormState form;
-  const _StatusPicker({required this.form});
+  final ValueChanged<TradeFormState> onChanged;
+
+  const _PlanOnlyToggle({required this.form, required this.onChanged});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) =>
-      PrayanSegmentedControl<TradeStatus>(
-        value: form.status,
-        onChanged: (value) => ref
-            .read(tradeFormProvider.notifier)
-            .set(form.copyWith(status: value)),
-        options: const [
-          SegmentOption(
-            value: TradeStatus.planned,
-            label: 'Planned',
-            semanticLabel: 'Planned trade, not yet entered',
-          ),
-          SegmentOption(value: TradeStatus.open, label: 'Open'),
-          SegmentOption(value: TradeStatus.closed, label: 'Closed'),
-        ],
-      );
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return PrayanCard(
+      lift: CardLift.flat,
+      padding: const EdgeInsets.symmetric(
+        horizontal: Spacing.lg,
+        vertical: Spacing.xs,
+      ),
+      child: SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        value: form.isPlanOnly,
+        onChanged: (value) => onChanged(form.copyWith(isPlanOnly: value)),
+        title: const Text('This is a plan I have not taken'),
+        subtitle: Text(
+          'Kept out of your daily counts. Declining a setup is discipline, '
+          'not activity.',
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: colors.textSecondary),
+        ),
+      ),
+    );
+  }
 }
 
 class _NumberInput extends StatelessWidget {
@@ -814,50 +862,6 @@ class _Checklist extends StatelessWidget {
   }
 }
 
-class _AdvancedToggle extends StatelessWidget {
-  final bool expanded;
-  final VoidCallback onToggle;
-
-  const _AdvancedToggle({required this.expanded, required this.onToggle});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return InkWell(
-      onTap: onToggle,
-      borderRadius: Radii.field,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: Spacing.md),
-        child: Row(
-          children: [
-            Text(
-              expanded ? 'Fewer details' : 'More details',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(color: colors.accent),
-            ),
-            const SizedBox(width: Spacing.xs),
-            AnimatedRotation(
-              turns: expanded ? 0.5 : 0,
-              duration: Motion.duration(context, Motion.quick),
-              child: Icon(Icons.expand_more_rounded, color: colors.accent),
-            ),
-            const Spacer(),
-            Text(
-              'Psychology, notes, tags',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: colors.textTertiary),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _TagSection extends ConsumerWidget {
   final TradeFormState form;
   const _TagSection({required this.form});
@@ -874,11 +878,26 @@ class _TagSection extends ConsumerWidget {
   }
 }
 
+/// The written half of a trade, rendered for one part of the method.
+///
+/// These fields used to sit together behind a "More details" toggle, which is
+/// where they went to be ignored — and they are the half that turns a closed
+/// position into something worth reading back. Split by part so each is asked
+/// for at the moment it can be answered: how you felt and why you took it
+/// belong to the entry, why you left and whether you would repeat it cannot be
+/// answered until you are out.
 class _AdvancedFields extends StatelessWidget {
   final TradeFormState form;
   final ValueChanged<TradeFormState> onChanged;
 
-  const _AdvancedFields({required this.form, required this.onChanged});
+  /// 1 for the entry, 3 for the review.
+  final int part;
+
+  const _AdvancedFields({
+    required this.form,
+    required this.onChanged,
+    required this.part,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -891,167 +910,165 @@ class _AdvancedFields extends StatelessWidget {
         // First in the section, because it is the field most likely to be
         // filled in and the one the journal's search and filters already
         // depend on — they have been searching tags nothing could set.
-        const SectionHeader(
-          title: 'Tags',
-          subtitle: 'Whatever you want to find these trades by later.',
-        ),
-        _TagSection(form: form),
-        const SizedBox(height: Spacing.section),
-        const SectionHeader(title: 'How did you feel before entering?'),
-        Wrap(
-          spacing: Spacing.sm,
-          runSpacing: Spacing.sm,
-          children: [
-            for (final emotion in EmotionTag.values)
+        if (part == 1) ...[
+          const SectionHeader(title: 'How did you feel before entering?'),
+          Wrap(
+            spacing: Spacing.sm,
+            runSpacing: Spacing.sm,
+            children: [
+              for (final emotion in EmotionTag.values)
+                PrayanChoiceChip(
+                  label: emotion.label,
+                  selected: form.emotionBefore == emotion,
+                  selectedColor:
+                      emotion.isElevatedRisk ? colors.warning : colors.accent,
+                  onSelected: (_) =>
+                      onChanged(form.copyWith(emotionBefore: emotion)),
+                ),
+            ],
+          ),
+          const SizedBox(height: Spacing.section),
+          const SectionHeader(
+            title: 'Why this trade?',
+            subtitle: 'The single most useful thing you can record.',
+          ),
+          TextFormField(
+            initialValue: form.entryReason,
+            maxLines: 3,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              hintText: 'The setup, the level, why now.',
+            ),
+            onChanged: (value) => onChanged(form.copyWith(entryReason: value)),
+          ),
+        ],
+        if (part == 3) ...[
+          const SizedBox(height: Spacing.lg),
+          TextFormField(
+            initialValue: form.exitReason,
+            maxLines: 2,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              labelText: 'Why did you exit?',
+            ),
+            onChanged: (value) => onChanged(form.copyWith(exitReason: value)),
+          ),
+          const SizedBox(height: Spacing.lg),
+          TextFormField(
+            initialValue: form.managementNotes,
+            maxLines: 2,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              labelText: 'Trade management notes',
+            ),
+            onChanged: (value) =>
+                onChanged(form.copyWith(managementNotes: value)),
+          ),
+          const SizedBox(height: Spacing.section),
+          const SectionHeader(title: 'Instrument'),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<AssetClass>(
+                  initialValue: form.assetClass,
+                  decoration: const InputDecoration(labelText: 'Asset class'),
+                  items: [
+                    for (final asset in AssetClass.values)
+                      DropdownMenuItem(value: asset, child: Text(asset.label)),
+                  ],
+                  onChanged: (value) => onChanged(
+                      form.copyWith(assetClass: value ?? form.assetClass)),
+                ),
+              ),
+              const SizedBox(width: Spacing.md),
+              Expanded(
+                child: _NumberInput(
+                  label: 'Multiplier',
+                  value: form.multiplier,
+                  helper: form.assetClass.usesContractMultiplier
+                      ? 'Lot or contract size'
+                      : null,
+                  onChanged: (v) => onChanged(form.copyWith(multiplier: v)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Spacing.lg),
+          DropdownButtonFormField<MarketSession>(
+            initialValue: form.session,
+            decoration: const InputDecoration(labelText: 'Session'),
+            items: [
+              for (final session in MarketSession.values)
+                DropdownMenuItem(value: session, child: Text(session.label)),
+            ],
+            onChanged: (value) =>
+                onChanged(form.copyWith(session: value ?? form.session)),
+          ),
+          const SizedBox(height: Spacing.section),
+          const SectionHeader(title: 'Reflection'),
+          Text(
+            'Confidence: ${form.confidence ?? '—'}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          Slider(
+            value: (form.confidence ?? 5).toDouble(),
+            min: 1,
+            max: 10,
+            divisions: 9,
+            label: '${form.confidence ?? 5}',
+            onChanged: (value) =>
+                onChanged(form.copyWith(confidence: value.round())),
+          ),
+          const SizedBox(height: Spacing.md),
+          DropdownButtonFormField<MistakeCategory>(
+            initialValue: form.mistake,
+            decoration: const InputDecoration(
+              labelText: 'Was there a process mistake?',
+            ),
+            items: [
+              for (final mistake in MistakeCategory.values)
+                DropdownMenuItem(value: mistake, child: Text(mistake.label)),
+            ],
+            onChanged: (value) =>
+                onChanged(form.copyWith(mistake: value ?? form.mistake)),
+          ),
+          const SizedBox(height: Spacing.lg),
+          Text(
+            'Would you take this exact setup again?',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: Spacing.sm),
+          Row(
+            children: [
               PrayanChoiceChip(
-                label: emotion.label,
-                selected: form.emotionBefore == emotion,
-                selectedColor:
-                    emotion.isElevatedRisk ? colors.warning : colors.accent,
-                onSelected: (_) =>
-                    onChanged(form.copyWith(emotionBefore: emotion)),
+                label: 'Yes',
+                selected: form.wouldRepeat == true,
+                onSelected: (_) => onChanged(form.copyWith(wouldRepeat: true)),
               ),
-          ],
-        ),
-        const SizedBox(height: Spacing.section),
-        const SectionHeader(
-          title: 'Why this trade?',
-          subtitle: 'The single most useful thing you can record.',
-        ),
-        TextFormField(
-          initialValue: form.entryReason,
-          maxLines: 3,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            hintText: 'The setup, the level, why now.',
-          ),
-          onChanged: (value) => onChanged(form.copyWith(entryReason: value)),
-        ),
-        const SizedBox(height: Spacing.lg),
-        TextFormField(
-          initialValue: form.exitReason,
-          maxLines: 2,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            labelText: 'Why did you exit?',
-          ),
-          onChanged: (value) => onChanged(form.copyWith(exitReason: value)),
-        ),
-        const SizedBox(height: Spacing.lg),
-        TextFormField(
-          initialValue: form.managementNotes,
-          maxLines: 2,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            labelText: 'Trade management notes',
-          ),
-          onChanged: (value) =>
-              onChanged(form.copyWith(managementNotes: value)),
-        ),
-        const SizedBox(height: Spacing.section),
-        const SectionHeader(title: 'Instrument'),
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<AssetClass>(
-                initialValue: form.assetClass,
-                decoration: const InputDecoration(labelText: 'Asset class'),
-                items: [
-                  for (final asset in AssetClass.values)
-                    DropdownMenuItem(value: asset, child: Text(asset.label)),
-                ],
-                onChanged: (value) => onChanged(
-                    form.copyWith(assetClass: value ?? form.assetClass)),
+              const SizedBox(width: Spacing.sm),
+              PrayanChoiceChip(
+                label: 'No',
+                selected: form.wouldRepeat == false,
+                selectedColor: colors.warning,
+                onSelected: (_) => onChanged(form.copyWith(wouldRepeat: false)),
               ),
-            ),
-            const SizedBox(width: Spacing.md),
-            Expanded(
-              child: _NumberInput(
-                label: 'Multiplier',
-                value: form.multiplier,
-                helper: form.assetClass.usesContractMultiplier
-                    ? 'Lot or contract size'
-                    : null,
-                onChanged: (v) => onChanged(form.copyWith(multiplier: v)),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: Spacing.lg),
-        DropdownButtonFormField<MarketSession>(
-          initialValue: form.session,
-          decoration: const InputDecoration(labelText: 'Session'),
-          items: [
-            for (final session in MarketSession.values)
-              DropdownMenuItem(value: session, child: Text(session.label)),
-          ],
-          onChanged: (value) =>
-              onChanged(form.copyWith(session: value ?? form.session)),
-        ),
-        const SizedBox(height: Spacing.section),
-        const SectionHeader(title: 'Reflection'),
-        Text(
-          'Confidence: ${form.confidence ?? '—'}',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        Slider(
-          value: (form.confidence ?? 5).toDouble(),
-          min: 1,
-          max: 10,
-          divisions: 9,
-          label: '${form.confidence ?? 5}',
-          onChanged: (value) =>
-              onChanged(form.copyWith(confidence: value.round())),
-        ),
-        const SizedBox(height: Spacing.md),
-        DropdownButtonFormField<MistakeCategory>(
-          initialValue: form.mistake,
-          decoration: const InputDecoration(
-            labelText: 'Was there a process mistake?',
+            ],
           ),
-          items: [
-            for (final mistake in MistakeCategory.values)
-              DropdownMenuItem(value: mistake, child: Text(mistake.label)),
-          ],
-          onChanged: (value) =>
-              onChanged(form.copyWith(mistake: value ?? form.mistake)),
-        ),
-        const SizedBox(height: Spacing.lg),
-        Text(
-          'Would you take this exact setup again?',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        const SizedBox(height: Spacing.sm),
-        Row(
-          children: [
-            PrayanChoiceChip(
-              label: 'Yes',
-              selected: form.wouldRepeat == true,
-              onSelected: (_) => onChanged(form.copyWith(wouldRepeat: true)),
+          const SizedBox(height: Spacing.lg),
+          SwitchListTile(
+            value: form.isImpulsive,
+            onChanged: (value) => onChanged(form.copyWith(isImpulsive: value)),
+            title: const Text('This was an impulsive entry'),
+            subtitle: Text(
+              'Honest self-reporting makes the analytics worth reading.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: colors.textSecondary),
             ),
-            const SizedBox(width: Spacing.sm),
-            PrayanChoiceChip(
-              label: 'No',
-              selected: form.wouldRepeat == false,
-              selectedColor: colors.warning,
-              onSelected: (_) => onChanged(form.copyWith(wouldRepeat: false)),
-            ),
-          ],
-        ),
-        const SizedBox(height: Spacing.lg),
-        SwitchListTile(
-          value: form.isImpulsive,
-          onChanged: (value) => onChanged(form.copyWith(isImpulsive: value)),
-          title: const Text('This was an impulsive entry'),
-          subtitle: Text(
-            'Honest self-reporting makes the analytics worth reading.',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: colors.textSecondary),
+            contentPadding: EdgeInsets.zero,
           ),
-          contentPadding: EdgeInsets.zero,
-        ),
+        ],
       ],
     );
   }

@@ -7,6 +7,8 @@
 /// a screen that reaches for a repository nobody wired up.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prayan_core/prayan_core.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -334,6 +336,24 @@ final daySnapshotProvider =
 final activeDaySnapshotProvider = Provider<AsyncValue<DaySnapshot>>(
   (ref) => ref.watch(daySnapshotProvider(ref.watch(activeDayKeyProvider))),
 );
+
+/// The bytes behind a stored attachment, ready to render.
+///
+/// Attachments are held as data URIs, so this decodes rather than fetches.
+/// Keyed by id and cached by Riverpod, because a screenshot strip rebuilds
+/// often and base64 decoding a megabyte on every frame is not free.
+final attachmentBytesProvider =
+    FutureProvider.family<Uint8List?, String>((ref, id) async {
+  final uri = await ref.watch(attachmentRepositoryProvider).resolveUrl(id);
+  if (uri == null || !uri.hasScheme || uri.scheme != 'data') return null;
+  try {
+    return UriData.fromUri(uri).contentAsBytes();
+  } on FormatException {
+    // A corrupt attachment should render as a missing image, not take the
+    // whole trade detail screen down with it.
+    return null;
+  }
+});
 
 /// Every tag used in the last year, most-used first.
 ///
