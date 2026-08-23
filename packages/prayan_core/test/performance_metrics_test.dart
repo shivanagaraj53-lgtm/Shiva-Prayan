@@ -120,8 +120,12 @@ void main() {
     test('fees reduce net P&L and are reported separately', () {
       final metrics = PerformanceCalculator.compute([
         Fixtures.trade(
-            id: 't1', entry: '100', stop: '98', exit: '104',
-            quantity: '100', fees: '50'),
+            id: 't1',
+            entry: '100',
+            stop: '98',
+            exit: '104',
+            quantity: '100',
+            fees: '50'),
       ]);
       expect(metrics.totalFees, Dec.parse('50'));
       expect(metrics.netPnl, Dec.parse('350'));
@@ -180,7 +184,10 @@ void main() {
         Fixtures.trade(
           id: 't3',
           direction: TradeDirection.short,
-          entry: '100', stop: '102', target: '94', exit: '94',
+          entry: '100',
+          stop: '102',
+          target: '94',
+          exit: '94',
           quantity: '100',
           openedAt: Fixtures.baseTime.add(const Duration(minutes: 20)),
         ),

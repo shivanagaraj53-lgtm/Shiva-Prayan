@@ -11,6 +11,7 @@ export 'src/calc/performance_metrics.dart';
 export 'src/calc/trade_calculator.dart';
 export 'src/coaching/coaching_facts.dart';
 export 'src/coaching/insight_engine.dart';
+export 'src/import/csv_import.dart';
 export 'src/models/account.dart';
 export 'src/models/enums.dart';
 export 'src/models/rule.dart';

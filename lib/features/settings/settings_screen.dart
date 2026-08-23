@@ -338,6 +338,12 @@ class SettingsScreen extends ConsumerWidget {
             const SectionHeader(title: 'Your data'),
             _NavRow(
               icon: Icons.download_outlined,
+              title: 'Import from CSV',
+              subtitle: 'Bring in trades your broker already exported',
+              onTap: () => context.push(Routes.importCsv),
+            ),
+            _NavRow(
+              icon: Icons.download_rounded,
               title: 'Export my journal',
               subtitle: 'Everything you have logged, as a file you keep',
               onTap: () => _notYet(context, 'Export'),

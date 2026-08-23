@@ -14,6 +14,7 @@ import '../features/reviews/period_review_screen.dart';
 import '../features/rules/rule_builder_screen.dart';
 import '../features/rules/rules_screen.dart';
 import '../features/rules/setups_screen.dart';
+import '../features/settings/import_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/splash/splash_screen.dart';
 import '../features/trade/trade_detail_screen.dart';
@@ -51,6 +52,7 @@ class Routes {
   static const monthlyReview = '/reviews/monthly';
   static const psychology = '/psychology';
   static const settings = '/settings';
+  static const importCsv = '/import';
 }
 
 /// Where a user at [path] should actually be, or null to leave them there.
@@ -166,6 +168,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 TradeLogScreen(editTradeId: state.pathParameters['id']),
           ),
         ],
+      ),
+      GoRoute(
+        path: Routes.importCsv,
+        builder: (context, state) => const ImportScreen(),
       ),
       GoRoute(
         path: Routes.setups,

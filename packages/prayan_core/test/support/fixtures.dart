@@ -154,8 +154,8 @@ class Fixtures {
         tradingDayKey: dayKey,
         account: account ?? Fixtures.account(),
         strategiesById: {
-          for (final strategy in
-              strategies.isEmpty ? [Fixtures.strategy()] : strategies)
+          for (final strategy
+              in strategies.isEmpty ? [Fixtures.strategy()] : strategies)
             strategy.id: strategy,
         },
         dailyReviewCompleted: dailyReviewCompleted,

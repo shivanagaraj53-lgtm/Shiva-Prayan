@@ -16,8 +16,8 @@ void main() {
       // Bucketing by raw UTC would have been correct here by luck, so also
       // check the case that actually breaks: 00:30 IST on the 17th.
       final afterMidnight = DateTime.utc(2026, 3, 16, 19, 0);
-      expect(TradingDay.keyFor(afterMidnight, TradingDayConfig.ist),
-          '2026-03-17');
+      expect(
+          TradingDay.keyFor(afterMidnight, TradingDayConfig.ist), '2026-03-17');
     });
 
     test('a US evening trade belongs to the local day, not the UTC one', () {
@@ -33,7 +33,8 @@ void main() {
       const winter = TradingDayConfig(utcOffsetMinutes: -300); // EST
       const summer = TradingDayConfig(utcOffsetMinutes: -240); // EDT
       final beforeDst = DateTime.utc(2026, 3, 7, 2, 30); // 21:30 EST on the 6th
-      final afterDst = DateTime.utc(2026, 3, 14, 1, 30); // 21:30 EDT on the 13th
+      final afterDst =
+          DateTime.utc(2026, 3, 14, 1, 30); // 21:30 EDT on the 13th
       expect(TradingDay.keyFor(beforeDst, winter), '2026-03-06');
       expect(TradingDay.keyFor(afterDst, summer), '2026-03-13');
     });
@@ -43,12 +44,10 @@ void main() {
       const eveningStart =
           TradingDayConfig(utcOffsetMinutes: 0, dayStartMinutes: -360);
       // 19:00 UTC on the 16th belongs to the 17th's session.
-      expect(
-          TradingDay.keyFor(DateTime.utc(2026, 3, 16, 19), eveningStart),
+      expect(TradingDay.keyFor(DateTime.utc(2026, 3, 16, 19), eveningStart),
           '2026-03-17');
       // 17:00 UTC is still the 16th.
-      expect(
-          TradingDay.keyFor(DateTime.utc(2026, 3, 16, 17), eveningStart),
+      expect(TradingDay.keyFor(DateTime.utc(2026, 3, 16, 17), eveningStart),
           '2026-03-16');
     });
   });

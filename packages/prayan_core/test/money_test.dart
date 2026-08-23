@@ -10,13 +10,13 @@ void main() {
 
     test('formats the brief\'s worked-example equity', () {
       expect(Money.parse('500000', Currency.inr).format(), '₹5,00,000.00');
-      expect(Money.parse('12345678.5', Currency.inr).format(),
-          '₹1,23,45,678.50');
+      expect(
+          Money.parse('12345678.5', Currency.inr).format(), '₹1,23,45,678.50');
     });
 
     test('groups USD in threes', () {
-      expect(Money.parse('1234567.89', Currency.usd).format(),
-          r'$1,234,567.89');
+      expect(
+          Money.parse('1234567.89', Currency.usd).format(), r'$1,234,567.89');
     });
 
     test('respects JPY having no minor unit', () {
@@ -24,7 +24,8 @@ void main() {
       expect(Currency.jpy.decimalDigits, 0);
     });
 
-    test('places the symbol after the amount when the currency requires it', () {
+    test('places the symbol after the amount when the currency requires it',
+        () {
       final unknown = Currency.fromCode('XYZ');
       expect(Money.parse('10', unknown).format(), '10.00 XYZ');
       // A non-breaking space keeps the code from wrapping away from the
@@ -32,23 +33,23 @@ void main() {
       expect(Money.parse('10', unknown).format().codeUnitAt(5), 0x00A0);
     });
 
-    test('shows an explicit sign so gains and losses do not rely on colour', () {
-      expect(Money.parse('250', Currency.usd).format(showSign: true),
-          r'+$250.00');
+    test('shows an explicit sign so gains and losses do not rely on colour',
+        () {
+      expect(
+          Money.parse('250', Currency.usd).format(showSign: true), r'+$250.00');
       expect(Money.parse('-250', Currency.usd).format(showSign: true),
           r'-$250.00');
       expect(Money.zero(Currency.usd).format(showSign: true), r'$0.00');
     });
 
     test('compacts large values per currency convention', () {
-      expect(Money.parse('2500000', Currency.inr).format(compact: true),
-          '₹25L');
+      expect(
+          Money.parse('2500000', Currency.inr).format(compact: true), '₹25L');
       expect(Money.parse('35000000', Currency.inr).format(compact: true),
           '₹3.5Cr');
-      expect(Money.parse('2500000', Currency.usd).format(compact: true),
-          r'$2.5M');
-      expect(Money.parse('1500', Currency.usd).format(compact: true),
-          r'$1.5K');
+      expect(
+          Money.parse('2500000', Currency.usd).format(compact: true), r'$2.5M');
+      expect(Money.parse('1500', Currency.usd).format(compact: true), r'$1.5K');
     });
 
     test('unknown currency codes degrade gracefully instead of throwing', () {
@@ -86,8 +87,7 @@ void main() {
     test('ratioTo returns null rather than infinity on a zero divisor', () {
       final profit = Money.parse('500', Currency.usd);
       expect(profit.ratioTo(Money.zero(Currency.usd)), isNull);
-      expect(profit.ratioTo(Money.parse('250', Currency.usd)),
-          Dec.parse('2'));
+      expect(profit.ratioTo(Money.parse('250', Currency.usd)), Dec.parse('2'));
     });
 
     test('sums a list', () {

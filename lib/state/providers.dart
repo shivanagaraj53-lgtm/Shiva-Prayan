@@ -355,6 +355,37 @@ final attachmentBytesProvider =
   }
 });
 
+/// Fingerprints of every trade already in the journal.
+///
+/// What an import checks against so a re-import skips what it already has.
+/// Brokers hand out "last 90 days" and people import monthly, so overlap is
+/// the normal case rather than the exceptional one.
+final existingFingerprintsProvider = Provider<Set<String>>((ref) {
+  final today = ref.watch(todayKeyProvider);
+  final trades = ref.watch(
+    tradesInRangeProvider(DayRange(_shiftDays(today, -1095), today)),
+  );
+  return {
+    for (final trade in trades.value ?? const <Trade>[])
+      [
+        trade.symbol.toUpperCase(),
+        trade.direction.wireName,
+        trade.openedAtUtc.toIso8601String(),
+        (trade.entries.isEmpty
+                    ? trade.plannedEntryPrice
+                    : trade.entries.first.price)
+                ?.toString() ??
+            '',
+        (trade.plannedQuantity ??
+                    (trade.entries.isEmpty
+                        ? null
+                        : trade.entries.first.quantity))
+                ?.toString() ??
+            '',
+      ].join('|'),
+  };
+});
+
 /// Every tag used in the last year, most-used first.
 ///
 /// Suggestions are what make tagging survive contact with a real journal: left

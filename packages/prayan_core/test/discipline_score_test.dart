@@ -67,8 +67,8 @@ void main() {
       ]);
       expect(score.value, Dec.parse('71.4'));
 
-      final riskComponent =
-          score.components.firstWhere((c) => c.category == RuleCategory.riskLimit);
+      final riskComponent = score.components
+          .firstWhere((c) => c.category == RuleCategory.riskLimit);
       expect(riskComponent.normalizedWeight.roundTo(1), Dec.parse('71.4'));
       expect(riskComponent.categoryScore, Dec.hundred);
     });

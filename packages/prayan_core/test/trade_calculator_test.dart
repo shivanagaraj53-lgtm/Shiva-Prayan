@@ -97,7 +97,11 @@ void main() {
 
     test('realized R is net P&L divided by planned risk', () {
       final metrics = TradeCalculator.compute(Fixtures.trade(
-        entry: '100', stop: '98', target: '104', exit: '104', quantity: '100'));
+          entry: '100',
+          stop: '98',
+          target: '104',
+          exit: '104',
+          quantity: '100'));
       expect(metrics.plannedRisk, Dec.parse('200'));
       expect(metrics.realizedR, Dec.parse('2'));
     });
@@ -122,7 +126,7 @@ void main() {
 
     test('risk percent uses the equity frozen at plan time', () {
       final metrics = TradeCalculator.compute(Fixtures.trade(
-        entry: '100', stop: '90', quantity: '100', equity: '100000'));
+          entry: '100', stop: '90', quantity: '100', equity: '100000'));
       expect(metrics.plannedRisk, Dec.parse('1000'));
       expect(metrics.plannedRiskPercent, Dec.parse('1'));
     });
@@ -199,7 +203,7 @@ void main() {
     test('a result inside the breakeven band is not called a win', () {
       // Planned risk 200; 2% band is +/- 4.
       final metrics = TradeCalculator.compute(Fixtures.trade(
-        entry: '100', stop: '98', exit: '100.03', quantity: '100'));
+          entry: '100', stop: '98', exit: '100.03', quantity: '100'));
       expect(metrics.netPnl, Dec.parse('3'));
       expect(metrics.outcome, TradeOutcome.breakeven);
     });
@@ -272,8 +276,7 @@ void main() {
 
     test('flags a missing stop as a caution rather than a hard error', () {
       final issues = TradeCalculator.validate(Fixtures.trade(stop: null));
-      final stopIssue =
-          issues.firstWhere((i) => i.field == 'stopLossPrice');
+      final stopIssue = issues.firstWhere((i) => i.field == 'stopLossPrice');
       expect(stopIssue.isBlocking, isFalse);
     });
 
@@ -284,8 +287,8 @@ void main() {
     });
 
     test('rejects an exit timestamped before the entry', () {
-      final trade = Fixtures.trade()
-          .copyWith(closedAtUtc: Fixtures.baseTime.subtract(const Duration(hours: 1)));
+      final trade = Fixtures.trade().copyWith(
+          closedAtUtc: Fixtures.baseTime.subtract(const Duration(hours: 1)));
       expect(TradeCalculator.validate(trade).map((i) => i.field),
           contains('closedAtUtc'));
     });

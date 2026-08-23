@@ -230,8 +230,7 @@ void main() {
   );
 
   DisciplineScore scoreForTrade(Trade trade) => DisciplineScorer.score(
-        RulesEngine.evaluateTrade(
-            trade: trade, rules: rules, context: context),
+        RulesEngine.evaluateTrade(trade: trade, rules: rules, context: context),
       );
 
   group('Trade arithmetic matches the brief', () {
@@ -275,7 +274,8 @@ void main() {
 
     test('the losing trade scores at least as well as the winning one', () {
       // The brief's central claim: process, not profit.
-      expect(scoreForTrade(trade1).value >= scoreForTrade(trade2).value, isTrue);
+      expect(
+          scoreForTrade(trade1).value >= scoreForTrade(trade2).value, isTrue);
     });
 
     test('trade 3 is flagged and scored down even though it won', () {
@@ -290,7 +290,8 @@ void main() {
       expect(violatedRules, contains('r_setup'));
 
       // "risk >1.5% configured as a major violation"
-      expect(score.majorViolations.map((v) => v.ruleId), contains('r_risk_major'));
+      expect(
+          score.majorViolations.map((v) => v.ruleId), contains('r_risk_major'));
       expect(score.wasCappedByMajorViolation || score.value <= Dec.fromInt(60),
           isTrue);
     });
@@ -323,16 +324,10 @@ void main() {
 
       expect(report.hasMajorViolation, isTrue);
       // Three trades against a limit of three is compliant.
-      expect(
-          report.dayLevel
-              .firstWhere((e) => e.ruleId == 'r_count')
-              .status,
+      expect(report.dayLevel.firstWhere((e) => e.ruleId == 'r_count').status,
           RuleStatus.passed);
       // The day finished profitable, so the loss stop was never hit.
-      expect(
-          report.dayLevel
-              .firstWhere((e) => e.ruleId == 'r_dayloss')
-              .status,
+      expect(report.dayLevel.firstWhere((e) => e.ruleId == 'r_dayloss').status,
           RuleStatus.passed);
 
       expect(score.value <= Dec.fromInt(60), isTrue,
@@ -340,10 +335,8 @@ void main() {
       expect(score.rulesApplicable, greaterThan(0));
     });
 
-    test('the day is profitable yet the score is capped: process over P&L',
-        () {
-      final metrics =
-          PerformanceCalculator.compute([trade1, trade2, trade3]);
+    test('the day is profitable yet the score is capped: process over P&L', () {
+      final metrics = PerformanceCalculator.compute([trade1, trade2, trade3]);
       expect(metrics.netPnl.isPositive, isTrue);
 
       final report = RulesEngine.evaluateDay(
@@ -367,14 +360,23 @@ void main() {
 
       final history = StreakCalculator.compute([
         DailyDisciplineRecord(
-            dayKey: '2026-03-11', score: Dec.parse('95'),
-            hadMajorViolation: false, violationCount: 0, tradeCount: 2),
+            dayKey: '2026-03-11',
+            score: Dec.parse('95'),
+            hadMajorViolation: false,
+            violationCount: 0,
+            tradeCount: 2),
         DailyDisciplineRecord(
-            dayKey: '2026-03-12', score: Dec.parse('100'),
-            hadMajorViolation: false, violationCount: 0, tradeCount: 3),
+            dayKey: '2026-03-12',
+            score: Dec.parse('100'),
+            hadMajorViolation: false,
+            violationCount: 0,
+            tradeCount: 3),
         DailyDisciplineRecord(
-            dayKey: '2026-03-13', score: Dec.parse('90'),
-            hadMajorViolation: false, violationCount: 1, tradeCount: 2),
+            dayKey: '2026-03-13',
+            score: Dec.parse('90'),
+            hadMajorViolation: false,
+            violationCount: 1,
+            tradeCount: 2),
         StreakCalculator.recordFor(
           dayKey: dayKey,
           score: todayScore,
@@ -406,7 +408,8 @@ void main() {
 
       final facts = CoachingFacts.build(
         dayKey: dayKey,
-        netPnlFormatted: Money(metrics.netPnl, Currency.inr).format(showSign: true),
+        netPnlFormatted:
+            Money(metrics.netPnl, Currency.inr).format(showSign: true),
         totalR: metrics.totalR,
         tradesTaken: 3,
         winCount: metrics.winCount,
@@ -436,8 +439,14 @@ void main() {
       for (final insight in insights) {
         final text = '${insight.title} ${insight.body}'.toLowerCase();
         for (final banned in const [
-          'stupid', 'idiot', 'failure', 'loser', 'shame',
-          'trade more', 'make it back', 'recover your loss',
+          'stupid',
+          'idiot',
+          'failure',
+          'loser',
+          'shame',
+          'trade more',
+          'make it back',
+          'recover your loss',
         ]) {
           expect(text.contains(banned), isFalse,
               reason: '"$banned" must never appear in coaching copy');
@@ -456,7 +465,8 @@ void main() {
 
       final facts = CoachingFacts.build(
         dayKey: dayKey,
-        netPnlFormatted: Money(metrics.netPnl, Currency.inr).format(showSign: true),
+        netPnlFormatted:
+            Money(metrics.netPnl, Currency.inr).format(showSign: true),
         totalR: metrics.totalR,
         tradesTaken: 1,
         winCount: 0,

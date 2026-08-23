@@ -111,8 +111,7 @@ void main() {
       final approved = Fixtures.strategy(id: 's_ok', name: 'Pullback');
       final banned =
           Fixtures.strategy(id: 's_no', name: 'Impulse', approved: false);
-      final context =
-          Fixtures.dayContext(strategies: [approved, banned]);
+      final context = Fixtures.dayContext(strategies: [approved, banned]);
 
       final ok = RulesEngine.evaluateTrade(
         trade: Fixtures.trade(strategyId: 's_ok'),
@@ -144,8 +143,8 @@ void main() {
         rules: [rule],
         context: Fixtures.dayContext(),
       );
-      expect(evaluationFor(results, 'r_check').status,
-          RuleStatus.notApplicable);
+      expect(
+          evaluationFor(results, 'r_check').status, RuleStatus.notApplicable);
     });
 
     test('partial checklist completion is a violation', () {
