@@ -338,10 +338,27 @@ class _EquityChart extends StatelessWidget {
     final last = spots.last.y;
     final lineColor = last >= 0 ? colors.positive : colors.negative;
 
+    // Pick the gap between labels rather than letting the chart choose.
+    //
+    // Left to itself it puts a tick at the top edge as well as at the last
+    // round value, and with the labels rounded to whole numbers both came out
+    // as the same text — an axis reading "3R" twice, one above the other. The
+    // interval is chosen so ticks land on whole units, and anything that is
+    // not a multiple of it is not labelled.
+    final low = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
+    final high = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+    final span = (high - low).abs();
+    final interval =
+        span == 0 ? 1.0 : (span / 4).ceilToDouble().clamp(1.0, double.infinity);
+
     return LineChart(
       LineChartData(
         gridData: FlGridData(
           drawVerticalLine: false,
+          // The same interval the labels use, so every line has a number
+          // against it. Lines at one spacing and labels at another reads as a
+          // chart that has lost track of its own scale.
+          horizontalInterval: useR ? interval : null,
           getDrawingHorizontalLine: (value) => FlLine(
             color: colors.border,
             strokeWidth: value == 0 ? 1.4 : 0.6,
@@ -358,10 +375,20 @@ class _EquityChart extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 44,
-              getTitlesWidget: (value, meta) => Text(
-                useR ? '${value.toStringAsFixed(0)}R' : _compact(value),
-                style: PrayanType.figure(colors.textTertiary, size: 10),
-              ),
+              interval: useR ? interval : null,
+              getTitlesWidget: (value, meta) {
+                // Edge ticks are not multiples of the interval, and labelling
+                // them is what produced the repeated value.
+                if (useR &&
+                    (value / interval - (value / interval).round()).abs() >
+                        0.01) {
+                  return const SizedBox.shrink();
+                }
+                return Text(
+                  useR ? '${value.toStringAsFixed(0)}R' : _compact(value),
+                  style: PrayanType.figure(colors.textTertiary, size: 10),
+                );
+              },
             ),
           ),
         ),

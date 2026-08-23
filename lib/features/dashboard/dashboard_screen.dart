@@ -209,9 +209,15 @@ class _DashboardBody extends ConsumerWidget {
                     valueColor: snapshot.performance.rSampleCount == 0
                         ? null
                         : colors.forSign(snapshot.totalR.signum),
-                    support: snapshot.performance.rSampleCount == 0
-                        ? 'Needs a stop to measure'
-                        : 'Across the day',
+                    // Two different absences, and telling someone they need
+                    // a stop when they typed one is how a hint becomes noise
+                    // they stop reading. R is unmeasurable while a trade is
+                    // open no matter how carefully it was planned.
+                    support: snapshot.performance.tradeCount == 0
+                        ? 'Nothing closed yet'
+                        : snapshot.performance.rSampleCount == 0
+                            ? 'Needs a stop to measure'
+                            : 'Across the day',
                   ),
                 ),
               ],
