@@ -268,10 +268,8 @@ class PerformanceCalculator {
     // correctly dilutes expectancy for a user who scratches many trades.
     Dec? expectancy;
     if (averageWin != null || averageLoss != null) {
-      final winProbability =
-          Dec.fromInt(winCount).divide(countDec, scale: 8);
-      final lossProbability =
-          Dec.fromInt(lossCount).divide(countDec, scale: 8);
+      final winProbability = Dec.fromInt(winCount).divide(countDec, scale: 8);
+      final lossProbability = Dec.fromInt(lossCount).divide(countDec, scale: 8);
       final winSide = (averageWin ?? Dec.zero) * winProbability;
       final lossSide = (averageLoss ?? Dec.zero) * lossProbability;
       expectancy = (winSide - lossSide).roundTo(_scale);

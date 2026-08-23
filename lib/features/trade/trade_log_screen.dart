@@ -779,18 +779,26 @@ class _StrategyPicker extends ConsumerWidget {
       );
     }
 
+    // A retired setup stays on the trades that used it but is not offered
+    // again — which is what retiring one is for.
+    final offered = strategies
+        .where((s) => !s.isArchived || s.id == form.strategyId)
+        .toList(growable: false);
+
     return Wrap(
       spacing: Spacing.sm,
       runSpacing: Spacing.sm,
       children: [
-        for (final strategy in strategies)
+        for (final strategy in offered)
           PrayanChoiceChip(
             label: strategy.name,
             selected: form.strategyId == strategy.id,
             icon: strategy.isApproved ? Icons.verified_outlined : null,
-            onSelected: (selected) => ref.read(tradeFormProvider.notifier).set(
-                  form.copyWith(strategyId: selected ? strategy.id : null),
-                ),
+            onSelected: (selected) =>
+                ref.read(tradeFormProvider.notifier).selectStrategy(
+                      selected ? strategy.id : null,
+                      selected ? strategy : null,
+                    ),
           ),
       ],
     );

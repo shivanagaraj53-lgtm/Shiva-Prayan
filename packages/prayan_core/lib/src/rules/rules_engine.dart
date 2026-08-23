@@ -107,9 +107,9 @@ class RulesEngine {
         trade: trade,
         rules: rules,
         context: context,
-        priorTradesToday:
-            taken.where((t) => t.openedAtUtc.isBefore(trade.openedAtUtc)).toList(
-                growable: false),
+        priorTradesToday: taken
+            .where((t) => t.openedAtUtc.isBefore(trade.openedAtUtc))
+            .toList(growable: false),
       );
     }
 
@@ -152,8 +152,8 @@ class RulesEngine {
       // Planned and cancelled trades were never taken, so execution rules
       // cannot be breached by them (brief §37: declining a setup is discipline).
       if (!trade.countsAsTaken) {
-        results.add(_notApplicable(version, RuleScope.trade,
-            'Trade was not taken.', trade.id));
+        results.add(_notApplicable(
+            version, RuleScope.trade, 'Trade was not taken.', trade.id));
         continue;
       }
 
@@ -196,7 +196,9 @@ class RulesEngine {
       case RuleMeasure.maxRiskPercentPerTrade:
         final observed = metrics.plannedRiskPercent;
         if (observed == null) {
-          return _indeterminate(version, RuleScope.trade,
+          return _indeterminate(
+              version,
+              RuleScope.trade,
               'Risk percentage needs a stop and an account equity figure.',
               trade.id);
         }
@@ -216,7 +218,9 @@ class RulesEngine {
       case RuleMeasure.maxRiskMoneyPerTrade:
         final observed = metrics.plannedRisk;
         if (observed == null) {
-          return _indeterminate(version, RuleScope.trade,
+          return _indeterminate(
+              version,
+              RuleScope.trade,
               'Money at risk needs an entry, a stop and a position size.',
               trade.id);
         }
@@ -285,7 +289,9 @@ class RulesEngine {
           );
         }
         if (strategy == null) {
-          return _indeterminate(version, RuleScope.trade,
+          return _indeterminate(
+              version,
+              RuleScope.trade,
               'The setup on this trade is no longer available to check.',
               trade.id);
         }
@@ -360,8 +366,9 @@ class RulesEngine {
           scope: RuleScope.trade,
           tradeId: trade.id,
           passed: trade.hasAttachment,
-          observed:
-              trade.hasAttachment ? '${trade.attachmentIds.length} attached' : 'None',
+          observed: trade.hasAttachment
+              ? '${trade.attachmentIds.length} attached'
+              : 'None',
           threshold: 'Screenshot required',
           passMessage: 'A chart screenshot is attached.',
           failMessage: 'No chart screenshot was attached.',
@@ -392,8 +399,8 @@ class RulesEngine {
       case RuleMeasure.maxWeeklyLossR:
       case RuleMeasure.dailyReviewCompleted:
       case RuleMeasure.manualCustom:
-        return _notApplicable(version, RuleScope.trade,
-            'Evaluated at day level.', trade.id);
+        return _notApplicable(
+            version, RuleScope.trade, 'Evaluated at day level.', trade.id);
     }
   }
 
@@ -443,9 +450,8 @@ class RulesEngine {
     final stopBreachIndex = _dailyStopBreachIndex(taken, rules, context);
 
     for (final rule in rules) {
-      final anchor = taken.isEmpty
-          ? DateTime.now().toUtc()
-          : taken.first.openedAtUtc;
+      final anchor =
+          taken.isEmpty ? DateTime.now().toUtc() : taken.first.openedAtUtc;
       final version = rule.versionAt(anchor) ?? rule.current;
       final scope = version.measure.scope;
       if (scope == RuleScope.trade) continue;
@@ -479,16 +485,15 @@ class RulesEngine {
 
         case RuleMeasure.maxDailyLossMoney:
           if (taken.isEmpty) {
-            results.add(_notApplicable(
-                version, scope, 'No trades were taken.', null));
+            results.add(
+                _notApplicable(version, scope, 'No trades were taken.', null));
             break;
           }
           final loss = dayNetPnl.isNegative ? dayNetPnl.abs : Dec.zero;
           final limit = version.threshold;
           final shown = context.account.money(loss).format();
-          final limitShown = limit == null
-              ? '-'
-              : context.account.money(limit).format();
+          final limitShown =
+              limit == null ? '-' : context.account.money(limit).format();
           results.add(_compare(
             version: version,
             scope: scope,
@@ -502,8 +507,8 @@ class RulesEngine {
 
         case RuleMeasure.maxDailyLossPercent:
           if (taken.isEmpty) {
-            results.add(_notApplicable(
-                version, scope, 'No trades were taken.', null));
+            results.add(
+                _notApplicable(version, scope, 'No trades were taken.', null));
             break;
           }
           final equity = context.account.riskBaseEquity;
@@ -517,8 +522,7 @@ class RulesEngine {
           results.add(_compare(
             version: version,
             scope: scope,
-            passed:
-                version.threshold == null || percent <= version.threshold!,
+            passed: version.threshold == null || percent <= version.threshold!,
             observed: '${percent.roundTo(2).normalized}%',
             threshold: '${version.threshold?.normalized ?? '-'}%',
             passMessage: 'Day loss of ${percent.roundTo(2).normalized}% stayed '
@@ -529,8 +533,8 @@ class RulesEngine {
 
         case RuleMeasure.maxDailyLossR:
           if (taken.isEmpty) {
-            results.add(_notApplicable(
-                version, scope, 'No trades were taken.', null));
+            results.add(
+                _notApplicable(version, scope, 'No trades were taken.', null));
             break;
           }
           final lossR = dayTotalR.isNegative ? dayTotalR.abs : Dec.zero;
@@ -539,8 +543,7 @@ class RulesEngine {
           results.add(_compare(
             version: version,
             scope: scope,
-            passed:
-                version.threshold == null || lossR <= version.threshold!,
+            passed: version.threshold == null || lossR <= version.threshold!,
             observed: '${shown}R',
             threshold: '${limit}R',
             passMessage: 'Lost ${shown}R, inside your ${limit}R daily stop.',
@@ -549,13 +552,12 @@ class RulesEngine {
 
         case RuleMeasure.maxConsecutiveLosses:
           if (version.threshold == null) {
-            results.add(_notApplicable(
-                version, scope, 'No limit configured.', null));
+            results.add(
+                _notApplicable(version, scope, 'No limit configured.', null));
             break;
           }
           final limit = version.threshold!;
-          final continuedAfter =
-              _tradedAfterConsecutiveLosses(outcomes, limit);
+          final continuedAfter = _tradedAfterConsecutiveLosses(outcomes, limit);
           final longest = _longestLossRun(outcomes);
           results.add(_compare(
             version: version,
@@ -609,8 +611,7 @@ class RulesEngine {
           results.add(_compare(
             version: version,
             scope: scope,
-            passed:
-                version.threshold == null || loss <= version.threshold!,
+            passed: version.threshold == null || loss <= version.threshold!,
             observed: shown,
             threshold: limitShown,
             passMessage: 'Week-to-date loss of $shown is inside your '
@@ -631,8 +632,7 @@ class RulesEngine {
           results.add(_compare(
             version: version,
             scope: scope,
-            passed:
-                version.threshold == null || lossR <= version.threshold!,
+            passed: version.threshold == null || lossR <= version.threshold!,
             observed: '${shown}R',
             threshold: '${version.threshold?.normalized}R',
             passMessage: 'Week-to-date loss of ${shown}R is inside your limit.',
@@ -654,7 +654,9 @@ class RulesEngine {
         case RuleMeasure.manualCustom:
           final reported = context.manualCompliance[rule.id];
           if (reported == null) {
-            results.add(_indeterminate(version, scope,
+            results.add(_indeterminate(
+                version,
+                scope,
                 'Mark whether you followed this rule to include it in your '
                 'score.',
                 null));

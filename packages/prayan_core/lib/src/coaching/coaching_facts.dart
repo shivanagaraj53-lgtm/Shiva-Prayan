@@ -137,10 +137,8 @@ class CoachingFacts {
     required bool tradedAfterDailyStop,
     required bool dayWasProfitable,
   }) {
-    final violated = score.violations
-        .map((v) => v.ruleName)
-        .toSet()
-        .toList(growable: false);
+    final violated =
+        score.violations.map((v) => v.ruleName).toSet().toList(growable: false);
     final major = score.majorViolations
         .map((v) => v.ruleName)
         .toSet()
@@ -173,8 +171,9 @@ class CoachingFacts {
       tradedAfterDailyStop: tradedAfterDailyStop,
       isDisciplinedLoss:
           tradesTaken > 0 && !dayWasProfitable && score.violations.isEmpty,
-      isUndisciplinedWin:
-          tradesTaken > 0 && dayWasProfitable && score.majorViolations.isNotEmpty,
+      isUndisciplinedWin: tradesTaken > 0 &&
+          dayWasProfitable &&
+          score.majorViolations.isNotEmpty,
     );
   }
 }

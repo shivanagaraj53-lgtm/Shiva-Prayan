@@ -288,8 +288,7 @@ class StreakCalculator {
         hadMajorViolation: score.majorViolations.isNotEmpty,
         violationCount: score.violations.length,
         tradeCount: tradeCount,
-        evaluations:
-            evaluations.isEmpty ? [...score.violations] : evaluations,
+        evaluations: evaluations.isEmpty ? [...score.violations] : evaluations,
       );
 }
 

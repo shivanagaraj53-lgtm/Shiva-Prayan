@@ -65,8 +65,7 @@ class TradingAccount {
         userId: map['userId'] as String? ?? '',
         name: map['name'] as String? ?? 'Account',
         currency: Currency.fromCode(map['currencyCode'] as String? ?? 'USD'),
-        startingEquity:
-            Dec.tryParse('${map['startingEquity']}') ?? Dec.zero,
+        startingEquity: Dec.tryParse('${map['startingEquity']}') ?? Dec.zero,
         currentEquity: map['currentEquity'] == null
             ? null
             : Dec.tryParse('${map['currentEquity']}'),
@@ -96,6 +95,18 @@ class Strategy {
   /// Hex colour for charts and chips, e.g. `#2E7D64`.
   final String? colorHex;
 
+  /// What to write about before entering this setup, and after leaving it.
+  ///
+  /// A blank "Why this trade?" box is answered with a blank, or with one word
+  /// that means nothing three months later. A setup you trade often has the
+  /// same three questions behind it every time, so they belong to the setup
+  /// rather than to your memory — the journal stays consistent because the
+  /// prompt is, not because you remembered to be.
+  ///
+  /// Null means no template; the field is left empty and nothing is imposed.
+  final String? entryPrompt;
+  final String? exitPrompt;
+
   const Strategy({
     required this.id,
     required this.userId,
@@ -104,6 +115,8 @@ class Strategy {
     this.isApproved = true,
     this.isArchived = false,
     this.assetClasses = const [],
+    this.entryPrompt,
+    this.exitPrompt,
     this.colorHex,
   });
 
@@ -116,6 +129,8 @@ class Strategy {
         'isArchived': isArchived,
         'assetClasses': assetClasses.map((a) => a.wireName).toList(),
         'colorHex': colorHex,
+        'entryPrompt': entryPrompt,
+        'exitPrompt': exitPrompt,
       };
 
   factory Strategy.fromMap(Map<String, dynamic> map) => Strategy(
@@ -129,8 +144,40 @@ class Strategy {
             .map((e) => AssetClass.fromWire('$e'))
             .toList(growable: false),
         colorHex: map['colorHex'] as String?,
+        entryPrompt: map['entryPrompt'] as String?,
+        exitPrompt: map['exitPrompt'] as String?,
+      );
+
+  Strategy copyWith({
+    String? name,
+    String? description,
+    bool? isApproved,
+    bool? isArchived,
+    List<AssetClass>? assetClasses,
+    String? colorHex,
+    // Explicitly nullable: clearing a template is a thing a user does, and
+    // `??` cannot tell "leave it" from "remove it".
+    Object? entryPrompt = _unset,
+    Object? exitPrompt = _unset,
+  }) =>
+      Strategy(
+        id: id,
+        userId: userId,
+        name: name ?? this.name,
+        description: description ?? this.description,
+        isApproved: isApproved ?? this.isApproved,
+        isArchived: isArchived ?? this.isArchived,
+        assetClasses: assetClasses ?? this.assetClasses,
+        colorHex: colorHex ?? this.colorHex,
+        entryPrompt:
+            entryPrompt == _unset ? this.entryPrompt : entryPrompt as String?,
+        exitPrompt:
+            exitPrompt == _unset ? this.exitPrompt : exitPrompt as String?,
       );
 }
+
+/// Sentinel for copyWith arguments that distinguish "not given" from "null".
+const Object _unset = Object();
 
 /// One line of the pre-trade checklist (brief §8).
 class ChecklistItem {
@@ -173,8 +220,7 @@ class ChecklistItem {
         prompt: map['prompt'] as String? ?? '',
         position: (map['position'] as num?)?.toInt() ?? 0,
         isActive: map['isActive'] as bool? ?? true,
-        strategyIds:
-            ((map['strategyIds'] as List?) ?? const []).cast<String>(),
+        strategyIds: ((map['strategyIds'] as List?) ?? const []).cast<String>(),
       );
 
   /// The default checklist offered at onboarding, taken from brief §8.

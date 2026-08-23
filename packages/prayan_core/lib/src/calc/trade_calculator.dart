@@ -150,13 +150,13 @@ class TradeCalculator {
       riskPerUnit = (riskReferenceEntry - stop).abs;
     }
 
-    final riskQuantity = trade.plannedQuantity ??
-        (entryQuantity.isZero ? null : entryQuantity);
+    final riskQuantity =
+        trade.plannedQuantity ?? (entryQuantity.isZero ? null : entryQuantity);
 
     Dec? plannedRisk;
     if (riskPerUnit != null && riskQuantity != null && !riskPerUnit.isZero) {
-      plannedRisk =
-          (riskPerUnit * riskQuantity * trade.multiplier).roundTo(_workingScale);
+      plannedRisk = (riskPerUnit * riskQuantity * trade.multiplier)
+          .roundTo(_workingScale);
     }
 
     Dec? plannedRiskPercent;
@@ -167,7 +167,9 @@ class TradeCalculator {
 
     Dec? plannedRewardRisk;
     final target = trade.targetPrice;
-    if (riskReferenceEntry != null && target != null && riskPerUnit != null &&
+    if (riskReferenceEntry != null &&
+        target != null &&
+        riskPerUnit != null &&
         !riskPerUnit.isZero) {
       final reward = (target - riskReferenceEntry).abs;
       plannedRewardRisk = reward.divide(riskPerUnit, scale: 4);
@@ -175,9 +177,8 @@ class TradeCalculator {
 
     Dec? entryNotional;
     if (averageEntryPrice != null && !entryQuantity.isZero) {
-      entryNotional =
-          (averageEntryPrice * entryQuantity * trade.multiplier)
-              .roundTo(_workingScale);
+      entryNotional = (averageEntryPrice * entryQuantity * trade.multiplier)
+          .roundTo(_workingScale);
     }
 
     // --- Realised result (only once something has been closed) -----------
@@ -292,7 +293,8 @@ class TradeCalculator {
     final issues = <ValidationIssue>[];
 
     if (trade.symbol.trim().isEmpty) {
-      issues.add(const ValidationIssue('symbol', 'Add the instrument you traded.'));
+      issues.add(
+          const ValidationIssue('symbol', 'Add the instrument you traded.'));
     }
     if (trade.multiplier.isZero || trade.multiplier.isNegative) {
       issues.add(const ValidationIssue(
@@ -317,11 +319,12 @@ class TradeCalculator {
     final entryQuantity = _sumQuantity(trade.entries);
     final exitQuantity = _sumQuantity(trade.exits);
     if (exitQuantity > entryQuantity) {
-      issues.add(const ValidationIssue('executions',
-          'You have exited more quantity than you entered.'));
+      issues.add(const ValidationIssue(
+          'executions', 'You have exited more quantity than you entered.'));
     }
 
-    final entry = trade.plannedEntryPrice ?? _weightedAveragePrice(trade.entries);
+    final entry =
+        trade.plannedEntryPrice ?? _weightedAveragePrice(trade.entries);
     final stop = trade.stopLossPrice;
     final target = trade.targetPrice;
 

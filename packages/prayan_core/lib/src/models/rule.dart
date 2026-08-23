@@ -145,8 +145,7 @@ class RuleVersion {
         sessions: ((map['sessions'] as List?) ?? const [])
             .map((e) => MarketSession.fromWire('$e'))
             .toList(growable: false),
-        strategyIds:
-            ((map['strategyIds'] as List?) ?? const []).cast<String>(),
+        strategyIds: ((map['strategyIds'] as List?) ?? const []).cast<String>(),
         assetClasses: ((map['assetClasses'] as List?) ?? const [])
             .map((e) => AssetClass.fromWire('$e'))
             .toList(growable: false),

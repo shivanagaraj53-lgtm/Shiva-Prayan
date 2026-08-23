@@ -83,8 +83,7 @@ class Money implements Comparable<Money> {
   }
 
   /// The amount rounded to the currency's minor unit.
-  Money get rounded =>
-      Money(amount.roundTo(currency.decimalDigits), currency);
+  Money get rounded => Money(amount.roundTo(currency.decimalDigits), currency);
 
   /// Renders the amount for display.
   ///

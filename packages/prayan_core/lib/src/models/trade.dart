@@ -70,9 +70,8 @@ class TradeExecution {
         kind: ExecutionKind.fromWire(map['kind'] as String?),
         price: Dec.tryParse('${map['price']}') ?? Dec.zero,
         quantity: Dec.tryParse('${map['quantity']}') ?? Dec.zero,
-        timestampUtc:
-            DateTime.tryParse('${map['timestampUtc']}')?.toUtc() ??
-                DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+        timestampUtc: DateTime.tryParse('${map['timestampUtc']}')?.toUtc() ??
+            DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
         fees: Dec.tryParse('${map['fees']}') ?? Dec.zero,
         note: map['note'] as String?,
       );
@@ -404,8 +403,7 @@ class Trade {
       direction: TradeDirection.fromWire(map['direction'] as String?),
       strategyId: map['strategyId'] as String?,
       status: TradeStatus.fromWire(map['status'] as String?),
-      openedAtUtc:
-          DateTime.tryParse('${map['openedAtUtc']}')?.toUtc() ?? epoch,
+      openedAtUtc: DateTime.tryParse('${map['openedAtUtc']}')?.toUtc() ?? epoch,
       closedAtUtc: DateTime.tryParse('${map['closedAtUtc']}')?.toUtc(),
       tradingDayKey: map['tradingDayKey'] as String? ?? '',
       session: MarketSession.fromWire(map['session'] as String?),

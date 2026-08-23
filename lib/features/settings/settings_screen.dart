@@ -102,6 +102,12 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => context.push(Routes.rules),
             ),
             _NavRow(
+              icon: Icons.category_outlined,
+              title: 'Setups',
+              subtitle: 'Your patterns, and the notes each one prompts for',
+              onTap: () => context.push(Routes.setups),
+            ),
+            _NavRow(
               icon: Icons.psychology_outlined,
               title: 'Psychology',
               subtitle: 'Mood check-ins and the patterns in your own data',

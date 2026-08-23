@@ -18,6 +18,15 @@ class TradeFormState {
   final MarketSession session;
   final TradeStatus status;
 
+  /// The template text last written into the note fields, if any.
+  ///
+  /// Kept so switching setups can replace a template nobody has edited while
+  /// never touching a sentence the user actually wrote. Without it the choice
+  /// is between clobbering people's notes and leaving the wrong setup's
+  /// prompts on screen, and both are worse than remembering one string.
+  final String? seededEntryPrompt;
+  final String? seededExitPrompt;
+
   /// Set when the user is recording a plan they have not acted on.
   ///
   /// The only part of status left to a choice, because it is the only part
@@ -64,6 +73,8 @@ class TradeFormState {
     this.session = MarketSession.open,
     this.status = TradeStatus.closed,
     this.isPlanOnly = false,
+    this.seededEntryPrompt,
+    this.seededExitPrompt,
     this.entryPrice = '',
     this.stopLoss = '',
     this.target = '',
@@ -95,6 +106,8 @@ class TradeFormState {
     MarketSession? session,
     TradeStatus? status,
     bool? isPlanOnly,
+    String? seededEntryPrompt,
+    String? seededExitPrompt,
     String? entryPrice,
     String? stopLoss,
     String? target,
@@ -129,6 +142,8 @@ class TradeFormState {
         session: session ?? this.session,
         status: status ?? this.status,
         isPlanOnly: isPlanOnly ?? this.isPlanOnly,
+        seededEntryPrompt: seededEntryPrompt ?? this.seededEntryPrompt,
+        seededExitPrompt: seededExitPrompt ?? this.seededExitPrompt,
         entryPrice: entryPrice ?? this.entryPrice,
         stopLoss: stopLoss ?? this.stopLoss,
         target: target ?? this.target,
@@ -381,6 +396,31 @@ class TradeFormController extends StateNotifier<TradeFormState> {
     if (!state.attachmentIds.contains(id)) return;
     state = state.copyWith(
       attachmentIds: state.attachmentIds.where((a) => a != id).toList(),
+    );
+  }
+
+  /// Selects a setup and seeds its note templates.
+  ///
+  /// A template only ever fills an empty box or replaces a template the user
+  /// has not touched. Anything they typed is theirs and survives changing
+  /// their mind about the setup — losing a paragraph of reasoning to a
+  /// dropdown would be the last time anyone wrote one.
+  void selectStrategy(String? strategyId, Strategy? strategy) {
+    final entry = strategy?.entryPrompt?.trim();
+    final exit = strategy?.exitPrompt?.trim();
+
+    String field(String current, String? seeded, String? incoming) {
+      final untouched = current.trim().isEmpty || current == seeded;
+      if (!untouched) return current;
+      return incoming ?? '';
+    }
+
+    state = state.copyWith(
+      strategyId: strategyId,
+      entryReason: field(state.entryReason, state.seededEntryPrompt, entry),
+      exitReason: field(state.exitReason, state.seededExitPrompt, exit),
+      seededEntryPrompt: entry ?? '',
+      seededExitPrompt: exit ?? '',
     );
   }
 

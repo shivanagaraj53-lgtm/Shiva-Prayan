@@ -160,7 +160,9 @@ class InsightEngine {
     // --- Long-run patterns. ----------------------------------------------
     final weakest = facts.weakestRuleName;
     final weakestRate = facts.weakestRuleCompliancePercent;
-    if (weakest != null && weakestRate != null && weakestRate < Dec.fromInt(80)) {
+    if (weakest != null &&
+        weakestRate != null &&
+        weakestRate < Dec.fromInt(80)) {
       insights.add(Insight(
         id: 'weakest_rule',
         tone: InsightTone.observation,
@@ -236,8 +238,13 @@ class InsightEngine {
   /// Milestones are sparse on purpose — a nudge every day would be a dark
   /// pattern, and the brief explicitly forbids manipulative streak mechanics.
   static bool _isMilestone(int streak) =>
-      streak == 3 || streak == 7 || streak == 14 || streak == 30 ||
-      streak == 60 || streak == 90 || (streak > 90 && streak % 30 == 0);
+      streak == 3 ||
+      streak == 7 ||
+      streak == 14 ||
+      streak == 30 ||
+      streak == 60 ||
+      streak == 90 ||
+      (streak > 90 && streak % 30 == 0);
 
   static String _joinNames(List<String> names) {
     if (names.isEmpty) return 'no rules';

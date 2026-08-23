@@ -145,7 +145,8 @@ class RuleTemplates {
         ),
         RuleTemplateEntry(
           name: 'Daily loss stop',
-          description: 'Finish trading for the day after losing ${dailyLossR}R.',
+          description:
+              'Finish trading for the day after losing ${dailyLossR}R.',
           category: RuleCategory.dailyLimits,
           severity: RuleSeverity.major,
           measure: RuleMeasure.maxDailyLossR,

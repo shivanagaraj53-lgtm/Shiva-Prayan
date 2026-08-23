@@ -55,8 +55,8 @@ class Currency {
     decimalDigits: 2,
     grouping: DigitGrouping.indian,
   );
-  static const usd = Currency(
-      code: 'USD', symbol: r'$', name: 'US Dollar', decimalDigits: 2);
+  static const usd =
+      Currency(code: 'USD', symbol: r'$', name: 'US Dollar', decimalDigits: 2);
   static const eur =
       Currency(code: 'EUR', symbol: '€', name: 'Euro', decimalDigits: 2);
   static const gbp = Currency(
@@ -82,7 +82,18 @@ class Currency {
 
   /// Currencies offered in onboarding and settings.
   static const supported = <Currency>[
-    inr, usd, eur, gbp, aed, sgd, jpy, aud, cad, chf, hkd, zar,
+    inr,
+    usd,
+    eur,
+    gbp,
+    aed,
+    sgd,
+    jpy,
+    aud,
+    cad,
+    chf,
+    hkd,
+    zar,
   ];
 
   /// Looks up a supported currency by ISO code.
@@ -119,7 +130,8 @@ class Currency {
   ///
   /// With `headSize: 3, tailSize: 2` this yields the Indian system:
   /// `500000` renders as `5,00,000`.
-  static String _group(String digits, {required int headSize, required int tailSize}) {
+  static String _group(String digits,
+      {required int headSize, required int tailSize}) {
     if (digits.length <= headSize) return digits;
     final head = digits.substring(digits.length - headSize);
     var rest = digits.substring(0, digits.length - headSize);

@@ -13,6 +13,7 @@ import '../features/psychology/psychology_screen.dart';
 import '../features/reviews/period_review_screen.dart';
 import '../features/rules/rule_builder_screen.dart';
 import '../features/rules/rules_screen.dart';
+import '../features/rules/setups_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/splash/splash_screen.dart';
 import '../features/trade/trade_detail_screen.dart';
@@ -40,6 +41,7 @@ class Routes {
   static String editTrade(String id) => '/trade/$id/edit';
 
   static const rules = '/rules';
+  static const setups = '/setups';
   static const newRule = '/rules/new';
   static String editRule(String id) => '/rules/$id';
 
@@ -164,6 +166,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 TradeLogScreen(editTradeId: state.pathParameters['id']),
           ),
         ],
+      ),
+      GoRoute(
+        path: Routes.setups,
+        builder: (context, state) => const SetupsScreen(),
       ),
       GoRoute(
         path: Routes.rules,

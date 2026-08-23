@@ -195,8 +195,7 @@ class Dec implements Comparable<Dec> {
 
   /// Exact multiplication. The result's scale is the sum of the operand
   /// scales, so no precision is discarded here; round at the display boundary.
-  Dec operator *(Dec other) =>
-      Dec._(units * other.units, scale + other.scale);
+  Dec operator *(Dec other) => Dec._(units * other.units, scale + other.scale);
 
   Dec operator -() => Dec._(-units, scale);
 
@@ -221,7 +220,8 @@ class Dec implements Comparable<Dec> {
     return Dec._(_divideRounded(numerator, denominator, rounding), scale);
   }
 
-  static BigInt _divideRounded(BigInt numerator, BigInt denominator, Rounding rounding) {
+  static BigInt _divideRounded(
+      BigInt numerator, BigInt denominator, Rounding rounding) {
     if (denominator.isNegative) {
       numerator = -numerator;
       denominator = -denominator;

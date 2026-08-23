@@ -113,8 +113,7 @@ class TradingDay {
     final date = parseKey(dayKey);
     if (date == null) return dayKey;
     // ISO-8601: week 1 is the week containing the first Thursday of the year.
-    final thursday =
-        date.add(Duration(days: DateTime.thursday - date.weekday));
+    final thursday = date.add(Duration(days: DateTime.thursday - date.weekday));
     final firstOfYear = DateTime.utc(thursday.year, 1, 1);
     final week = ((thursday.difference(firstOfYear).inDays) ~/ 7) + 1;
     return '${thursday.year}-W${week.toString().padLeft(2, '0')}';
