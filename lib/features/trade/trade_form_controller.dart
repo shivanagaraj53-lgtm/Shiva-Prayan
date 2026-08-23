@@ -303,6 +303,36 @@ class TradeFormController extends StateNotifier<TradeFormState> {
 
   void load(Trade trade) => state = TradeFormState.fromTrade(trade);
 
+  /// Normalises a tag to the form it is stored and compared in.
+  ///
+  /// Lower-cased, trimmed, internal whitespace collapsed. Without this a
+  /// journal accumulates "FOMO", "fomo" and "fomo " as three separate tags
+  /// and the filter that was supposed to group them does the opposite — which
+  /// is how tagging quietly becomes useless a few hundred trades in.
+  ///
+  /// Returns null for anything that is not a usable tag.
+  static String? normaliseTag(String raw) {
+    final tag = raw.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (tag.isEmpty) return null;
+    // Long enough to be a phrase, short enough to stay a label.
+    return tag.length > 32 ? tag.substring(0, 32).trim() : tag;
+  }
+
+  /// Adds a tag if it is usable and not already present. Returns whether it
+  /// changed anything, so the field can keep the text on a rejected entry
+  /// rather than silently swallowing it.
+  bool addTag(String raw) {
+    final tag = normaliseTag(raw);
+    if (tag == null || state.tags.contains(tag)) return false;
+    state = state.copyWith(tags: [...state.tags, tag]);
+    return true;
+  }
+
+  void removeTag(String tag) {
+    if (!state.tags.contains(tag)) return;
+    state = state.copyWith(tags: state.tags.where((t) => t != tag).toList());
+  }
+
   void toggleChecklistItem(String id, bool selected) {
     final next = {...state.completedChecklistIds};
     if (selected) {

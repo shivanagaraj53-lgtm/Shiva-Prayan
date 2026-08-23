@@ -8,6 +8,7 @@ import '../../design/components/feedback.dart';
 import '../../design/components/rule_status_tile.dart';
 import '../../design/components/segmented_control.dart';
 import '../../design/components/surfaces.dart';
+import '../../design/components/tag_editor.dart';
 import '../../design/format.dart';
 import '../../design/palette.dart';
 import '../../design/tokens.dart';
@@ -857,6 +858,22 @@ class _AdvancedToggle extends StatelessWidget {
   }
 }
 
+class _TagSection extends ConsumerWidget {
+  final TradeFormState form;
+  const _TagSection({required this.form});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(tradeFormProvider.notifier);
+    return TagEditor(
+      tags: form.tags,
+      suggestions: ref.watch(knownTagsProvider),
+      onAdd: notifier.addTag,
+      onRemove: notifier.removeTag,
+    );
+  }
+}
+
 class _AdvancedFields extends StatelessWidget {
   final TradeFormState form;
   final ValueChanged<TradeFormState> onChanged;
@@ -871,6 +888,15 @@ class _AdvancedFields extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: Spacing.md),
+        // First in the section, because it is the field most likely to be
+        // filled in and the one the journal's search and filters already
+        // depend on — they have been searching tags nothing could set.
+        const SectionHeader(
+          title: 'Tags',
+          subtitle: 'Whatever you want to find these trades by later.',
+        ),
+        _TagSection(form: form),
+        const SizedBox(height: Spacing.section),
         const SectionHeader(title: 'How did you feel before entering?'),
         Wrap(
           spacing: Spacing.sm,

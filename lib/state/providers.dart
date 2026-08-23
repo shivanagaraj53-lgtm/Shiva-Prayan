@@ -335,6 +335,31 @@ final activeDaySnapshotProvider = Provider<AsyncValue<DaySnapshot>>(
   (ref) => ref.watch(daySnapshotProvider(ref.watch(activeDayKeyProvider))),
 );
 
+/// Every tag used in the last year, most-used first.
+///
+/// Suggestions are what make tagging survive contact with a real journal: left
+/// to free text, the same idea gets typed four ways and the filter that was
+/// meant to group them splits them instead. Ordered by how often each has been
+/// used, so the ones a trader actually relies on are the ones in reach.
+final knownTagsProvider = Provider<List<String>>((ref) {
+  final today = ref.watch(todayKeyProvider);
+  final trades = ref.watch(
+    tradesInRangeProvider(DayRange(_shiftDays(today, -365), today)),
+  );
+  final counts = <String, int>{};
+  for (final trade in trades.value ?? const <Trade>[]) {
+    for (final tag in trade.tags) {
+      counts[tag] = (counts[tag] ?? 0) + 1;
+    }
+  }
+  final sorted = counts.keys.toList()
+    ..sort((a, b) {
+      final byCount = counts[b]!.compareTo(counts[a]!);
+      return byCount != 0 ? byCount : a.compareTo(b);
+    });
+  return sorted;
+});
+
 /// The most recent day *before* [dayKey] that has any trades on it.
 ///
 /// A day with nothing logged is a dead end otherwise: the dashboard is a
