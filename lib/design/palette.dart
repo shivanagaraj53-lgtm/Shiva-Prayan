@@ -43,6 +43,11 @@ class PrayanColors extends ThemeExtension<PrayanColors> {
   // --- Brand ------------------------------------------------------------
   /// The single brand accent. Used for the discipline ring, primary actions
   /// and selected states — and deliberately nothing else, so it keeps meaning.
+  ///
+  /// Blue, while [compliant] and [positive] stay green. That separation is the
+  /// point: brand is who the app is, and green here means a rule was followed
+  /// or a trade made money. When the two were the same colour, every primary
+  /// button read faintly like a pass mark.
   final Color accent;
 
   /// A muted wash of [accent] for backgrounds behind accent content.
@@ -296,10 +301,10 @@ class Palettes {
     textSecondary: Color(0xFF525C6B),
     textTertiary: Color(0xFF77818F),
     onAccent: Color(0xFFFFFFFF),
-    accent: Color(0xFF1F6F5C),
-    accentMuted: Color(0xFFE4F0EC),
-    accentBright: Color(0xFF35C79A),
-    accentDeep: Color(0xFF0C3B31),
+    accent: Color(0xFF1A56C4),
+    accentMuted: Color(0xFFE7EEFB),
+    accentBright: Color(0xFF3C8DF0),
+    accentDeep: Color(0xFF0A2350),
     positive: Color(0xFF1B6B54),
     positiveMuted: Color(0xFFE2F0EB),
     negative: Color(0xFF9C4221),
@@ -326,10 +331,10 @@ class Palettes {
     textSecondary: Color(0xFFA4AFBD),
     textTertiary: Color(0xFF78838F),
     onAccent: Color(0xFF06120E),
-    accent: Color(0xFF4FBFA0),
-    accentMuted: Color(0xFF16302A),
-    accentBright: Color(0xFF5FE3B8),
-    accentDeep: Color(0xFF0A2A24),
+    accent: Color(0xFF5C9DF5),
+    accentMuted: Color(0xFF16243D),
+    accentBright: Color(0xFF7CBAFF),
+    accentDeep: Color(0xFF091B33),
     positive: Color(0xFF4FBFA0),
     positiveMuted: Color(0xFF14302A),
     negative: Color(0xFFD98A66),
@@ -356,10 +361,10 @@ class Palettes {
     textSecondary: Color(0xFF5A5245),
     textTertiary: Color(0xFF817866),
     onAccent: Color(0xFFFFFDF8),
-    accent: Color(0xFF2F6D51),
-    accentMuted: Color(0xFFE6EFE7),
-    accentBright: Color(0xFF3E9E74),
-    accentDeep: Color(0xFF173A2C),
+    accent: Color(0xFF2A5AA8),
+    accentMuted: Color(0xFFE7EDF6),
+    accentBright: Color(0xFF4A87D6),
+    accentDeep: Color(0xFF16294B),
     positive: Color(0xFF2F6D51),
     positiveMuted: Color(0xFFE6EFE7),
     negative: Color(0xFF97431F),
@@ -386,10 +391,10 @@ class Palettes {
     textSecondary: Color(0xFFB4B4BA),
     textTertiary: Color(0xFF86868C),
     onAccent: Color(0xFF0C0C0D),
-    accent: Color(0xFF6FC8B0),
-    accentMuted: Color(0xFF1B2E2A),
-    accentBright: Color(0xFF7BE0C0),
-    accentDeep: Color(0xFF11312A),
+    accent: Color(0xFF7FB4F2),
+    accentMuted: Color(0xFF1B2635),
+    accentBright: Color(0xFF9CCBFF),
+    accentDeep: Color(0xFF122642),
     positive: Color(0xFF6FC8B0),
     positiveMuted: Color(0xFF1B2E2A),
     negative: Color(0xFFE09A79),

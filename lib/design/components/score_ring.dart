@@ -54,11 +54,18 @@ class ScoreRing extends StatelessWidget {
     final target = _fraction(score);
     final origin = _fraction(previousScore) ?? target;
 
+    // The bands run compliant -> amber -> red, and none of them is the brand
+    // colour. They used to include the accent, which worked only while the
+    // accent happened to be green; with a blue brand a blue band in the middle
+    // of that ramp says nothing about how the day went. The middle band is a
+    // yellow-green mixed from the two it sits between, so the ramp reads in
+    // order whatever the brand becomes next.
     final arcColor = switch (score) {
       null => colors.neutral,
       _ when wasCapped => colors.warning,
       final value when value >= Dec.fromInt(85) => colors.compliant,
-      final value when value >= Dec.fromInt(60) => colors.accent,
+      final value when value >= Dec.fromInt(60) =>
+        Color.lerp(colors.compliant, colors.warning, 0.45)!,
       final value when value >= Dec.fromInt(40) => colors.warning,
       _ => colors.violation,
     };

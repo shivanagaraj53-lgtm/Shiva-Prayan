@@ -4,7 +4,7 @@
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F5F6F7",
-    "theme_color": "#1E6B54",
+    "theme_color": "#1A56C4",
     "description": "Plan the trade. Follow the rules. Measure the discipline.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,

@@ -27,9 +27,13 @@ void main() {
   /// rather than digging factors out of a paint body. When the shape changes,
   /// exactly two numbers have to change together, and this says so by name.
   String constantIn(String source, String name, String where) {
-    final match = RegExp('\\b$name\\s*=\\s*(\\d+\\.?\\d*)').firstMatch(source);
+    // A decimal proportion, or an 0xAARRGGBB colour with the alpha byte
+    // dropped — the Android XML resource has no alpha to compare against.
+    final match = RegExp(
+      '\\b$name\\s*=\\s*(?:0x[fF]{2}([0-9a-fA-F]{6})|(\\d+\\.?\\d*))',
+    ).firstMatch(source);
     expect(match, isNotNull, reason: 'no `$name` found in $where');
-    return match!.group(1)!;
+    return match!.group(1) ?? match.group(2)!;
   }
 
   test('the icon generator draws the same letter as the app mark', () {
@@ -102,6 +106,28 @@ void main() {
     for (final path in required) {
       expect(File(path).existsSync(), isTrue, reason: 'missing $path');
     }
+  });
+
+  test('the adaptive icon background matches the plate the mark is drawn on',
+      () {
+    // Android composites two layers: a flat background colour and the mark
+    // with its plate left out. While the background was a hand-edited
+    // resource it went stale the moment the icon moved to a deep plate — a lit
+    // letter meant for a dark ground, sitting on a pale tint. Nothing in the
+    // repository showed it; it only appears on an Android home screen.
+    final background = File(
+      'android/app/src/main/res/values/ic_launcher_background.xml',
+    ).readAsStringSync();
+    final declared = RegExp('ic_launcher_background">#([0-9A-Fa-f]{6})<')
+        .firstMatch(background);
+    expect(declared, isNotNull, reason: 'no background colour declared');
+
+    expect(
+      declared!.group(1)!.toUpperCase(),
+      constantIn(generator, 'plateDeepArgb', 'the generator').toUpperCase(),
+      reason: 'the adaptive background has drifted from the icon plate — run: '
+          'dart run tool/generate_launcher_icons.dart',
+    );
   });
 
   test('the iOS marketing icon has no alpha channel', () {
